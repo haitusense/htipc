@@ -1,0 +1,15 @@
+[package]
+name = 'htipcR'
+version = '0.1.0'
+edition = '2021'
+
+[lib]
+crate-type = [ 'staticlib' ]
+name = 'htipcR'
+
+[dependencies]
+extendr-api = '*'
+colored = "*"
+
+htipc = { path = "../../../rust/", features = ["r-lang"] }
+# sandbox = { git = "https://github.com/haitusense/htipc/", features = ["r-lang"] }

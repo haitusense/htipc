@@ -1,0 +1,21 @@
+[package]
+name = "htipcPyo"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "htipcPyo"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "*"
+colored = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+
+pyo3 = { version = "*", features = ["anyhow"] }
+serde-pyobject = "*"
+
+sandbox = { path = "../rust/", features = ["python"] }
+# sandbox = { git = "https://github.com/haitusense/htipc/", features = ["python"] }

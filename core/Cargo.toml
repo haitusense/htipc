@@ -1,0 +1,43 @@
+[package]
+name = "htipc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "htipc"
+path = "src/lib.rs"
+crate-type = [ "rlib", "cdylib" ]
+
+[[bin]]
+name = "htipc"
+path = "src/main.rs"
+
+[features]
+default = []
+r-lang = ["extendr-api"]
+python = ["pyo3", "serde-pyobject"]
+
+[dependencies]
+anyhow = "*"
+thiserror = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+colored = "*"
+
+clap = { version = "4.4.10", features = ["derive",] }
+extendr-api = { optional = true, version = "*" }
+pyo3 = { optional = true, version = "*" }
+serde-pyobject = { optional = true, version ="*" }
+
+# namedpipe
+tokio = { version = "*", features = ["rt", "net", "io-util"] }
+named_pipe = "0.4.1"
+windows-sys = "*"
+
+# mmf
+# winapi = { version = "0.3.9", features = ["winbase"] }
+# kernel32-sys = "0.2.2"
+# winapi = { version = "*", features = [ "memoryapi", "winnt", "errhandlingapi", "namedpipeapi", "winbase", ] }
+

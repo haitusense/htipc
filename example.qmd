@@ -1,0 +1,9 @@
+
+
+
+```{r}
+
+invisible(capture.output(rhtipc::namedPipe("namedPipe", "value"), type = "message"))
+
+
+```
