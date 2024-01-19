@@ -17,5 +17,5 @@ serde_json = "*"
 pyo3 = { version = "*", features = ["anyhow"] }
 serde-pyobject = "*"
 
-sandbox = { path = "../rust/", features = ["python"] }
+sandbox = { path = "../core/", features = ["python"] }
 # sandbox = { git = "https://github.com/haitusense/htipc/", features = ["python"] }

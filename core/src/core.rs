@@ -2,6 +2,7 @@ pub mod namedpipe;
 // pub mod memorymappedfile;
 use clap::{Parser, Subcommand, Args};
 use serde::{Serialize, Deserialize};
+
 use colored::Colorize;
 
 // debug print
@@ -18,30 +19,39 @@ macro_rules! cprintln {
 }
 
 #[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
 pub struct Cli {
   #[command(subcommand)]
   pub command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
-#[command(author, version, about, long_about = None)]
 pub enum Commands {
-  #[command(about = "help for hoge")]
+  #[command(about = "Hello World :-)")]
   Hello {
     #[arg(short, long)]
     opt: String,
   },
-  #[command(about = "help for fuga")]
+  #[command(about = "Send Message using NamedPipe")]
   PIPE(PipeArgs),
 }
 
 #[derive(Args, Serialize, Deserialize, Debug)]
 pub struct PipeArgs {
   #[arg(num_args(1))] 
-  pub pipename: String,
+  pub addr: String,
 
   #[arg(num_args(0..))] 
   pub commands: Option<Vec<String>>,
+
+  #[arg(short, long, help = "default : inf.[ms]")] 
+  pub connect_timeout: Option<u32>,
+
+  #[arg(short, long, help = "default : inf.[ms]")] 
+  pub read_timeout: Option<u32>,
+
+  #[arg(short, long, help = "default : inf.[ms]")] 
+  pub write_timeout: Option<u32>,
 }
 
 impl PipeArgs {
@@ -49,8 +59,26 @@ impl PipeArgs {
   pub fn to_value(&self) -> serde_json::Value { serde_json::to_value(self).unwrap() }
   pub fn get_command_string(&self) -> String { 
     match self.commands.clone() {
-      Some(n) => n.join(" "),
-      None => "".to_string()
+      Some(n) => format!("{}\r\n", n.join(" ")),
+      None => "\r\n".to_string()
+    }
+  }
+  pub fn get_addr_string(&self) -> String { format!(r##"\\.\pipe\{}"##, self.addr) }
+}
+
+pub fn namedpipe(args:PipeArgs) -> &'static str {
+  cprintln!(blue: "connecting", args.addr);
+  cprintln!(blue: "sending",  args.get_command_string());
+  println!("{}", args.to_json());
+  println!("{:?}", args.to_value());
+  match namedpipe::send(args) {
+    Ok(src) => {
+      cprintln!(green: "received", src);
+      "OK"
+    },
+    Err(e) => {
+      cprintln!(red: "ERROR", e);
+      "ERR"
     }
   }
 }

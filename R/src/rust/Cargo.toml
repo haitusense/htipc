@@ -11,5 +11,5 @@ name = 'htipcR'
 extendr-api = '*'
 colored = "*"
 
-htipc = { path = "../../../rust/", features = ["r-lang"] }
+htipc = { path = "../../../core/", features = ["r-lang"] }
 # sandbox = { git = "https://github.com/haitusense/htipc/", features = ["r-lang"] }
