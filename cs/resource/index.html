@@ -1,0 +1,60 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+
+<style type="text/css">
+  canvas {
+    image-rendering: pixelated;
+  }
+</style>
+
+<body>
+  <canvas id="canvas" width="320" height="240"></canvas>
+</body>
+
+<script>
+if(!window.chrome.webview) alert('webview not found');
+let canvas = null;
+
+// addEventListener DOMContentLoaded
+window.addEventListener('DOMContentLoaded', async () => window.chrome.webview.postMessage('DOMContentLoaded'));
+window.addEventListener('load', () => window.chrome.webview.postMessage('load'));
+
+// addEventListener webview message
+window.chrome.webview.addEventListener('message', (e) => {
+  let json = e.data;
+  switch(json.type){
+    case "message":
+      console.log(`from cs ${json.type} : ${json.payload}`.yellow());
+      break;
+    case "csx":
+      console.log(`from csx ${json.payload}`);
+      break;
+    case "text":
+      console.log(json.payload);
+      document.getElementById(json.payload.id).value = json.payload.value;
+      break;
+    case "plot":
+      document.getElementById("plot").innerHTML = json.payload;
+      break;
+    default:
+      console.log(`from cs ${json.type}`);
+      console.log(e);
+  }
+});
+
+
+// Event
+const draw = async (color) => {
+  const squid = chrome.webview.hostObjects.Squid;
+  // let result = await squid.ReadMemoryMap();
+  // SquidJS.DrawFromInt32('canvas', result)
+
+  // await SquidJS.drawFromMemoryMap('canvas', color)
+  await SquidJS.drawFromMemoryMap('canvas', color, 1)
+}
+
+
+</script>
+</html>

@@ -1,7 +1,6 @@
 use anyhow::{Result, bail};
 use anyhow::Context as _;
 use thiserror::Error; 
-use super::*;
 use named_pipe::PipeClient;
 use std::io::{Write, Read};
 // use std::os::windows::ffi::OsStrExt;
@@ -39,7 +38,7 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
   if let Some(n) = args.read_timeout { pipe.set_read_timeout(Some(std::time::Duration::from_millis(n as u64))); }
   if let Some(n) = args.write_timeout { pipe.set_write_timeout( Some(std::time::Duration::from_millis(n as u64))); }
 
-  pipe.write_all(com.as_str().as_bytes())
+  pipe.write_all(format!("{com}\r\n").as_str().as_bytes())
     .context(NamedPipeError::CommunicationError)?;
   pipe.flush()
     .context(NamedPipeError::CommunicationError)?;
@@ -49,6 +48,33 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
 
   Ok(buf)
 }
+
+
+pub fn search(src: &str)  {
+  // let re = regex::Regex::new(src).unwrap();
+  let wm = wildmatch::WildMatch::new(src);
+  let entries = std::fs::read_dir(r"\\.\pipe\").unwrap();
+  for entry in entries {
+    if let Ok(n) = entry {
+      // match re.is_match(n.file_name().to_string_lossy().into_owned().as_str()) {
+      //   true => println!("true : {:?}", n.path()),
+      //   false => println!("false : {:?}", n.path()),
+      // }
+      match wm.matches(n.file_name().to_string_lossy().into_owned().as_str()) {
+        true => println!("true : {:?}", n.path()),
+        false => println!("false : {:?}", n.path()),
+      }
+    }
+  }
+}
+    // let entries = glob::glob(r"\\.\pipe\*").unwrap();
+    // for entry in entries {
+    //   if let Ok(n) = entry { println!("{:?}", n); }
+    // }
+    // glob = "0.3.1"
+
+
+
 
 #[allow(dead_code)]
 fn send2(pipename:&str, command:&str) -> Result<String> {

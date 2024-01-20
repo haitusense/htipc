@@ -34,7 +34,14 @@ pub enum Commands {
   },
   #[command(about = "Send Message using NamedPipe")]
   PIPE(PipeArgs),
+  
+  #[command(about = "Search NamedPipe by wildcard pattern")]
+  Search{
+    #[arg(num_args(1), help = "wildcard pattern")] 
+    pipename: String,
+  },
 }
+
 
 #[derive(Args, Serialize, Deserialize, Debug)]
 pub struct PipeArgs {
@@ -52,15 +59,20 @@ pub struct PipeArgs {
 
   #[arg(short, long, help = "default : inf.[ms]")] 
   pub write_timeout: Option<u32>,
+
+  #[arg(short, long, default_value_t = false, help = "use serialize json")] 
+  pub json: bool,
 }
 
 impl PipeArgs {
   pub fn to_json(&self) -> String { serde_json::to_string(self).unwrap() }
   pub fn to_value(&self) -> serde_json::Value { serde_json::to_value(self).unwrap() }
   pub fn get_command_string(&self) -> String { 
-    match self.commands.clone() {
-      Some(n) => format!("{}\r\n", n.join(" ")),
-      None => "\r\n".to_string()
+    match (self.commands.clone(), self.json) {
+      (Some(n), false) => format!("{}", n.join(" ")),
+      (Some(n), true) => serde_json::to_string(&n).unwrap(),
+      (None, true) => serde_json::json!({ }).to_string(),
+      _ => "".to_string()
     }
   }
   pub fn get_addr_string(&self) -> String { format!(r##"\\.\pipe\{}"##, self.addr) }
