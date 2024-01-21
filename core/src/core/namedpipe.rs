@@ -1,5 +1,4 @@
-use anyhow::{Result, bail};
-use anyhow::Context as _;
+use anyhow::{Result, bail, Context as _};
 use thiserror::Error; 
 use named_pipe::PipeClient;
 use std::io::{Write, Read};
@@ -11,8 +10,8 @@ pub enum NamedPipeError {
   #[error("NoConnection '{0}'")]
 	NoConnection(String),
   
-  #[error("NoConnectionErr")]
-	CommunicationError ,
+  #[error("NoConnectionErr {0}")]
+	CommunicationError(String) ,
 
   #[error("Timeout")]
   Timeout,
@@ -30,7 +29,7 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
       },
       None => loop {
         if let Ok(n) = PipeClient::connect(addr.to_owned()) { return Ok(n); } 
-      }  
+      }
     };
     anyhow::bail!(NamedPipeError::Timeout);
   })()?;
@@ -38,28 +37,38 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
   if let Some(n) = args.read_timeout { pipe.set_read_timeout(Some(std::time::Duration::from_millis(n as u64))); }
   if let Some(n) = args.write_timeout { pipe.set_write_timeout( Some(std::time::Duration::from_millis(n as u64))); }
 
-  pipe.write_all(format!("{com}\r\n").as_str().as_bytes())
-    .context(NamedPipeError::CommunicationError)?;
   pipe.flush()
-    .context(NamedPipeError::CommunicationError)?;
-  
-  let mut buf = String::new();
-  pipe.read_to_string(&mut buf).context(NamedPipeError::CommunicationError)?;
+    .context(NamedPipeError::CommunicationError("flush".to_string()))?;
+  pipe.write_all(format!("{com}\r\n").as_str().as_bytes())
+    .context(NamedPipeError::CommunicationError("write_all".to_string()))?;
 
-  Ok(buf)
+
+  // let mut buf = String::new();
+  // pipe.read_to_string.(&mut buf).context(NamedPipeError::CommunicationError("read_to_string".to_string()))?;
+  let mut buf = vec![0u8; 128];
+  let mut string = String::new();
+  loop {
+    if let Ok(n)= pipe.read(&mut buf) { 
+      println!(".");
+      string.push_str(&String::from_utf8_lossy(&buf[..n])); 
+    }
+    else { println!("."); }
+    if string.contains('\n') { break; }
+  }
+  println!("{:?}",string);
+
+  Ok(string)
 }
 
 
 pub fn search(src: &str)  {
-  // let re = regex::Regex::new(src).unwrap();
+  // use regex : match regex::Regex::new(src)?.is_match(n.file_name().to_string_lossy().into_owned().as_str()) { }
+  // use glob  : for entry in glob::glob(r"\\.\pipe\*").unwrap() { }
+  
   let wm = wildmatch::WildMatch::new(src);
   let entries = std::fs::read_dir(r"\\.\pipe\").unwrap();
   for entry in entries {
     if let Ok(n) = entry {
-      // match re.is_match(n.file_name().to_string_lossy().into_owned().as_str()) {
-      //   true => println!("true : {:?}", n.path()),
-      //   false => println!("false : {:?}", n.path()),
-      // }
       match wm.matches(n.file_name().to_string_lossy().into_owned().as_str()) {
         true => println!("true : {:?}", n.path()),
         false => println!("false : {:?}", n.path()),
@@ -67,13 +76,6 @@ pub fn search(src: &str)  {
     }
   }
 }
-    // let entries = glob::glob(r"\\.\pipe\*").unwrap();
-    // for entry in entries {
-    //   if let Ok(n) = entry { println!("{:?}", n); }
-    // }
-    // glob = "0.3.1"
-
-
 
 
 #[allow(dead_code)]

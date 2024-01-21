@@ -4,29 +4,39 @@ using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.IO.Pipes;
+using System.Windows.Controls;
 
 namespace SimpleGUI;
 
-public static class NamedPipe {
+public class NamedPipeSingleton {
+  private NamedPipeSingleton() { }
+  private static NamedPipeSingleton _instance;
+  public static NamedPipeSingleton GetInstance() {
+    if (_instance == null) { _instance = new NamedPipeSingleton(); }
+    return _instance;
+  }
 
-  public static void Run<T>(string path, T window, Func<string, bool, string> callback) where T : System.Windows.Window {
-    string Dispatcher(string src, bool err){
-      String dst = null;
-      window.Dispatcher.Invoke((Action)(() => { dst = callback(src, err); }));
-      return dst;
+  private CancellationTokenSource _cancelServer = new CancellationTokenSource();
+
+  public void Cancel() => _cancelServer.Cancel();
+
+  public void Run<T>(string path, T window, Action<string, bool> callback) where T : System.Windows.Window {
+    void Dispatcher(string src, bool err){
+      window.Dispatcher.Invoke((Action)(() => { callback(src, err); }));
     }
     var task = Task.Run(() => {
       while (true) {
         try{
-          using var stream = new NamedPipeServerStream(path, PipeDirection.InOut);
-          stream.WaitForConnection();
-          using var sr = new StreamReader(stream);
-          using var sw = new StreamWriter(stream);
-          var src = sr.ReadLine();
-          var dst = Dispatcher(src, true);
-          sw.AutoFlush = true;
-          sw.WriteLine("OK");
-  
+          using(var stream = new NamedPipeServerStream(path, PipeDirection.InOut))
+            using(var sr = new StreamReader(stream))
+            using(var sw = new StreamWriter(stream)){
+              stream.WaitForConnection();
+              var src = sr.ReadLine();
+              Dispatcher(src, true);
+              sw.WriteLine($"OK");
+              stream.WaitForPipeDrain();
+              sw.Flush();
+          }
         } catch (Exception e) {
           Dispatcher(e.ToString(), false);
         }
@@ -36,92 +46,93 @@ public static class NamedPipe {
 }
 
 
-
-public class MemoryMap {
-
-  [StructLayout(LayoutKind.Sequential)]
-  public struct Header {
-    public int Size;
-    public int Sizeof;
-    public int Width;
-    public int Height;
-    
-    public int Length(){ return Size * Sizeof; }
+[ClassInterface(ClassInterfaceType.AutoDual)]
+[ComVisible(true)]
+public class MemoryMapSingleton {
+  private MemoryMapSingleton() { }
+  private static MemoryMapSingleton _instance;
+  public static MemoryMapSingleton GetInstance() {
+    if (_instance == null) { _instance = new MemoryMapSingleton(); }
+    return _instance;
   }
 
   protected MemoryMappedFile mmf;
 
-  public Header GetHeader() {
+  private int headersize = 32;
+
+  public void Create(string key, int w, int h) {
+    if(mmf != null) this.Close();
+    mmf = MemoryMappedFile.CreateNew(key, headersize +  w * h * Marshal.SizeOf(typeof(byte)));
     using var accessor = mmf.CreateViewAccessor();
-    Header dst;
-    accessor.Read(0, out dst);
+    accessor.Write(Marshal.SizeOf(typeof(int)) * 0, w * h);
+    accessor.Write(Marshal.SizeOf(typeof(int)) * 1, w);
+    accessor.Write(Marshal.SizeOf(typeof(int)) * 2, h);
+  }
+
+  public int Length() {
+    using var accessor = mmf.CreateViewAccessor();
+    return accessor.ReadInt32(0);
+  }
+
+  public int Width() {
+    using var accessor = mmf.CreateViewAccessor();
+    return accessor.ReadInt32(Marshal.SizeOf(typeof(int)) * 1);
+  }
+
+  public int Height() {
+    using var accessor = mmf.CreateViewAccessor();
+    return accessor.ReadInt32(Marshal.SizeOf(typeof(int)) * 2);
+  }
+
+  public byte ReadPixel(int index) {
+    using var accessor = mmf.CreateViewAccessor();
+    return accessor.ReadInt32(0) > index ? accessor.ReadByte(headersize + index) : (byte)0;
+  }
+
+  public void WritePixel(int index, byte val) {
+    using var accessor = mmf.CreateViewAccessor();
+    if(accessor.ReadInt32(0) > index){ accessor.Write(headersize + index, val); }
+  }
+
+  public byte[] ReadPixels() {
+    using var accessor = mmf.CreateViewAccessor();
+    var dst = new byte[accessor.ReadInt32(0)];
+    accessor.ReadArray(headersize, dst, 0, dst.Length);
     return dst;
   }
 
-  // public int Length() -> this.GetHeader().Length();
+  public void WritePixels(byte[] src) {
+    using var accessor = mmf.CreateViewAccessor();
+    accessor.WriteArray(headersize, src, 0, src.Length);
+  }
+
+  public byte[] ReadPixelsForJS() {
+    using var accessor = mmf.CreateViewAccessor();
+    var src = new byte[accessor.ReadInt32(0)];
+    var dst = new byte[accessor.ReadInt32(0) * 4];
+    accessor.ReadArray(headersize, src, 0, src.Length);
+    for(var i=0; i< src.Length; i++){
+      dst[i*4] = src[i];
+      dst[i*4+1] = src[i];
+      dst[i*4+2] = src[i];
+      dst[i*4+3] = 255;
+    }
+    return dst;
+  }
 
   public void Close() {
     mmf.Dispose();
     mmf = null;
   }
 
-  public virtual dynamic Read() => null;
-
-  public virtual dynamic Read(int index) => null;
-
-  public virtual void Write(dynamic data) { }
-
 }
 
-
-public class MemoryMap<T> : MemoryMap where T : struct {
-
-  public MemoryMap(string key, int width, int height) {
-    var dst = new Header() {
-      Width = width,
-      Height = height,
-      Sizeof = Marshal.SizeOf(typeof(T)),
-      Size = width * height * Marshal.SizeOf(typeof(T))
-    };    
-    mmf = MemoryMappedFile.CreateNew(key, Marshal.SizeOf(typeof(Header)) + width * height * Marshal.SizeOf(typeof(T)));
-    using var accessor = mmf.CreateViewAccessor();
-    accessor.Write(0, ref dst);
-  }
-
-  public MemoryMap(string key, T[] src) {
-    mmf = MemoryMappedFile.CreateNew(key, Marshal.SizeOf(typeof(Header)) + src.Length * Marshal.SizeOf(typeof(T)));
-    using var accessor = mmf.CreateViewAccessor();
-    accessor.Write(0, src.Length);
-    accessor.WriteArray(Marshal.SizeOf(typeof(Header)), src, 0, src.Length);
-  }
-
-  public override dynamic Read() => (dynamic)_Read();
-
-  public override dynamic Read(int index) => (dynamic)_Read(index);
-
-  public T[] _Read() {
-    using var accessor = mmf.CreateViewAccessor();
-    int size = accessor.ReadInt32(0); // サイズの読み込み
-    var dst = new T[size];
-    accessor.ReadArray<T>(sizeof(int), dst, 0, dst.Length);
-    return dst;
-  }
-
-  public T _Read(int index) {
-    using var accessor = mmf.CreateViewAccessor();
-    int size = accessor.ReadInt32(0);
-    T dst = default;
-    if(index < size)
-      accessor.Read<T>(sizeof(int) + index * Marshal.SizeOf(typeof(T)), out dst);
-    return dst;
-  }
-  
-  public override void Write(dynamic data) => _Write(data);
-
-  public void _Write(T[] data) {
-    using var accessor = mmf.CreateViewAccessor();
-    accessor.Write(0, data.Length);
-    accessor.WriteArray<T>(sizeof(int), data, 0, data.Length);
-  }
-
-}
+  // [StructLayout(LayoutKind.Sequential)]
+  // public struct Header {
+  //   public int Size;
+  //   public int Sizeof;
+  //   public int Width;
+  //   public int Height;
+    
+  //   public int Length(){ return Size * Sizeof; }
+  // }

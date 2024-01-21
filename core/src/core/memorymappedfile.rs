@@ -1,261 +1,134 @@
-use anyhow::Result;
-use anyhow::Context as _;
-
-use std::fs::File;
-use std::io::{Read, Write, BufWriter, BufReader};
-
-use std::ffi::OsStr;
-use std::os::windows::ffi::OsStrExt;
-use std::ptr::null_mut;
-use winapi::um::memoryapi::{CreateFileMappingW, MapViewOfFile, FILE_MAP_ALL_ACCESS};
-use winapi::um::winnt::{HANDLE, PAGE_READWRITE};
-use winapi::um::errhandlingapi::GetLastError;
-
-// use std::time::Duration;
-// use tokio::time;
-// use windows_sys::Win32::Foundation::ERROR_PIPE_BUSY;
-
+// use anyhow::Result;
+// use anyhow::Context as _;
 
 /*
-
-struct MemoryMappedFile {
-  handle : *mut std::ffi::c_void,
-  view : *mut std::ffi::c_void,
-}
-
-impl MemoryMappedFile {
-
-  fn open(path:&str) -> anyhow::Result<Self> {
-    let wide_name: Vec<u16> = std::ffi::OsStr::new(path)
-      .encode_wide()
-      .chain(std::iter::once(0))
-      .collect();
-    let handle = unsafe { kernel32::OpenFileMappingW(
-      winapi::um::winnt::SECTION_MAP_WRITE,
-      winapi::shared::minwindef::FALSE,
-      wide_name.as_ptr()
-    ) };
-  
-    if handle.is_null() { anyhow::bail!("open mmf err") }
-
-    let view = unsafe { kernel32::MapViewOfFile(
-      handle,
-      winapi::um::winnt::SECTION_MAP_WRITE,
-      0, 0, 0,
-    ) };
-
-    if view.is_null() {
-      unsafe { kernel32::CloseHandle(handle) };
-      anyhow::bail!("open mmf err");
-    }
-    
-    Ok(Self { handle, view })
-  }
-
-  fn close(&self) {
-    unsafe {
-      kernel32::UnmapViewOfFile(self.view);
-      kernel32::CloseHandle(self.handle);
-    };
-  }
-
-  fn to_vec(&self) -> Vec<i32> {
-    let memory_size = unsafe {
-      std::slice::from_raw_parts_mut(self.view as *mut i32, 1)[0] as usize
-    };
-    println!("memorysize : {memory_size}");
-
-    let memory_slice = unsafe {
-      &std::slice::from_raw_parts_mut(self.view as *mut i32, memory_size + 1)[1..=memory_size]
-    };
-    memory_slice.to_vec()
-  }
-
-  fn to_vector<T>(&self) -> Vec<T> where T: Clone {
-    let memory_size = unsafe {
-      std::slice::from_raw_parts_mut(self.view as *mut i32, 1)[0] as usize
-    };
-    println!("memorysize : {memory_size}");
-
-    let memory_slice = unsafe {
-      std::slice::from_raw_parts_mut(self.view.offset(4) as *mut T, memory_size)
-    };
-    memory_slice.to_vec()
-  }
-
-  fn from_vec(&self, src: Vec<i32>) {
-    let memory_slice = unsafe {
-      std::slice::from_raw_parts_mut(self.view as *mut i32, src.len() + 1)
-    };
-    memory_slice[0] = src.len() as i32;
-    for i in 0..src.len() {
-      memory_slice[i+1] = src[i];
-    }
-  }
-
-  fn from_vector<T>(&self, src: Vec<T>) where T: Clone + Copy {
-    let memory_size = unsafe {
-      std::slice::from_raw_parts_mut(self.view as *mut i32, 1)
-    };
-    memory_size[0] = src.len() as i32;
-    let memory_slice = unsafe {
-      std::slice::from_raw_parts_mut(self.view.offset(4) as *mut T, src.len())
-    };
-
-    for i in 0..src.len() {
-      memory_slice[i] = src[i];
-    }
-  }
-
-}
-
-#[allow(non_snake_case)]
-#[extendr]
-fn readMemoryMappedFile(path:&str) -> Vec<i32> {
-  let mmf = MemoryMappedFile::open(path).unwrap();
-  let dst = mmf.to_vec();
-  mmf.close();
-  dst
-}
-
-#[allow(non_snake_case)]
-#[extendr]
-fn readMemoryMappedFileFloat(path:&str) -> Vec<f64> {
-  let mmf = MemoryMappedFile::open(path).unwrap();
-  let dst = mmf.to_vector::<f64>();
-  mmf.close();
-  dst
-}
-
-#[allow(non_snake_case)]
-#[extendr]
-fn writeMemoryMappedFile(path:&str, src:Vec<i32>) {
-  let mmf = MemoryMappedFile::open(path).unwrap();
-  mmf.from_vec(src);
-  mmf.close();
-}
-
-#[allow(non_snake_case)]
-#[extendr]
-fn writeMemoryMappedFileFloat(path:&str, src:Vec<f64>) {
-  let mmf = MemoryMappedFile::open(path).unwrap();
-  mmf.from_vector::<f64>(src);
-  mmf.close();
-}
-
-#[allow(dead_code)]
-fn memory_mapped_file(path:&str) {
-  let wide_name: Vec<u16> = std::ffi::OsStr::new(path)
-    .encode_wide()
-    .chain(std::iter::once(0))
-    .collect();
-  let handle = unsafe { kernel32::OpenFileMappingW(
-    winapi::um::winnt::SECTION_MAP_WRITE,
-    winapi::shared::minwindef::FALSE,
-    wide_name.as_ptr()
-  ) };
-  if handle.is_null() { panic!("panic"); }
-
-  let view = unsafe { kernel32::MapViewOfFile(
-    handle,
-    winapi::um::winnt::SECTION_MAP_WRITE,
-    0, 0, 0,
-  ) };
-
-  if view.is_null() {
-    unsafe { kernel32::CloseHandle(handle) };
-    // anyhow::bail!("mmf err");
-    panic!("panic");
-  }
-
-  let memory_size = unsafe {
-    std::slice::from_raw_parts_mut(view as *mut i32, 1)[0] as usize
-  };
-  println!("memorysize : {memory_size}");
-
-  let memory_slice = unsafe {
-    &std::slice::from_raw_parts_mut(view as *mut i32, memory_size + 1)[1..memory_size]
-  };
-  for i in 0..memory_slice.len() {
-    let val = memory_slice[i];
-    println!("index {i} : {val}");
-  }
-
-  unsafe {
-    kernel32::UnmapViewOfFile(view);
-    kernel32::CloseHandle(handle);
-  };
-}
-
+rust 1.75 ポインタバイトオフセットAPI
 */
+pub fn fill(path:&str, val:u8) -> anyhow::Result<()> {
+  open_mmf(path, |ptr| {
+
+    let state = get_state(ptr);
+    println!("{:?}", state);
+    let body = unsafe { ptr.add(32) as *mut u8 };
+
+    for i in 0..state.0 as usize {
+      unsafe { *body.add(i) = val; } 
+    }
+  })
+}
+
+pub fn lattice(path:&str) -> anyhow::Result<()> {
+  open_mmf(path, |ptr| {
+    let state = get_state(ptr);
+    let body = unsafe { ptr.add(32) as *mut u8 };
+    println!("{:?}", state);
+    for y in 0..state.2 as usize {
+      for x in 0..state.1 as usize {
+        if (x / 10) % 2 == (y / 10) % 2 {
+          unsafe { *body.add(x + y * state.1 as usize) = 215; } 
+        } else {
+          unsafe { *body.add(x + y * state.1 as usize) = 40; } 
+        }
+      }
+    }
+
+  })
+}
+
+pub fn mmf_copy_to(path:&str, val:&[u8]) -> anyhow::Result<()> {
+  open_mmf(path, |ptr| {
+
+    let state = get_state(ptr);
+    println!("{:?}", state);
+    let body = unsafe { ptr.add(32) as *mut u8 };
+
+    for i in 0..state.0 as usize {
+      unsafe { *body.add(i) = val[i]; } 
+    }
+  })
+}
 
 
-#[cfg(test)]
+pub fn set_pixel(path:&str, index:usize, val:u8) -> anyhow::Result<()> {
+  open_mmf(path, |ptr| {
+    unsafe { *ptr.add(32 + index) = val; } 
+  });
+  Ok(())
+}
+
+pub fn get_pixel(path:&str, index:usize) -> anyhow::Result<u8> {
+  let mut dst :u8 = 0;
+  open_mmf(path, |ptr| {
+     unsafe{ dst = *ptr.add(index); }
+  });
+  Ok(dst)
+}
+
+pub fn get_state(src: *const u8) -> (i32,i32,i32) {
+  let ptr = src as *const i32;
+  let size = unsafe{ *ptr.add(0) };
+  let width = unsafe{ *ptr.add(1) };
+  let height = unsafe{ *ptr.add(2) };
+  (size,width,height)
+}
+
+fn open_mmf<F: FnMut(*mut u8)>(path:&str, mut f: F) -> anyhow::Result<()> {
+  use std::os::windows::ffi::OsStrExt;
+  let path = std::ffi::OsStr::new(path).encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
+
+  /* create */
+  // let handle = unsafe { CreateFileMappingW(INVALID_HANDLE_VALUE, null_mut(), PAGE_READWRITE, 0, 32*240+32, path.as_ptr()) };
+  /* open */
+  let handle = unsafe { winapi::um::memoryapi::OpenFileMappingW(winapi::um::memoryapi::FILE_MAP_ALL_ACCESS, 0, path.as_ptr()) };
+  if handle.is_null() { anyhow::bail!("cannt open mmf"); }
+  let buf = unsafe { winapi::um::memoryapi::MapViewOfFile(handle, winapi::um::memoryapi::FILE_MAP_ALL_ACCESS, 0, 0, 0) };
+  if buf.is_null() { anyhow::bail!("cannt open mmf"); }
+
+  f(buf as *mut u8);
+
+  unsafe { winapi::um::memoryapi::UnmapViewOfFile(buf); }
+  unsafe { winapi::um::handleapi::CloseHandle(handle); }
+  Ok(())
+}
+
+
+#[cfg(test)] 
 mod tests {
-  use std::path::PathBuf;
   use super::*;
 
-  use std::ptr;
-
   #[test]
-  fn it_works() -> Result<()> {
+  fn it_works_mmf() -> anyhow::Result<()> {
 
-    let name = OsStr::new("shared_memory").encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
-    let handle = unsafe { CreateFileMappingW(null_mut(), null_mut(), PAGE_READWRITE, 0, 1024, name.as_ptr()) };
-    
-    if handle.is_null() {
-      println!("Failed to create file mapping: {}", unsafe { GetLastError() });
-    }
-    
-    let view = unsafe { MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, 1024) };
-    
-    if view.is_null() {
-      println!("Failed to map view of file: {}", unsafe { GetLastError() });  
+    // mmf_fill("SimpleGuiMmf",255).unwrap();
+    // mmf_lattice("SimpleGuiMmf").unwrap();
+
+    for i in 0..(320*240) {
+      set_pixel("SimpleGuiMmf",i, 200u8).unwrap();
     }
 
-    unsafe { 
-      let u8_slice = std::slice::from_raw_parts_mut(view as *mut u8, 1024);
-      // let first_element = u8_slice[2] as u8;
-      println!("{:?}", u8_slice);
-    }
+    // let src = 40u8;
+    // open_mmf(path, |ptr| {
 
+    //   let ptr32 = ptr as *mut i32;
+    //   let ptr32_wo_header = unsafe{ (ptr as *mut u8).add(4) as *mut i32 };
+    //   let ptr8_mut = ptr as *mut u8;
+    //   let dst :&[u8] = unsafe { std::slice::from_raw_parts(ptr as *mut u8, 32) };
 
-    
-    Ok(())
-  }
+    //   println!("{:?} {:?}", unsafe{ &*ptr32.add(1) }, unsafe{ &*ptr32.add(2) });
+    //   println!("{:?} {:?}", unsafe{ &*ptr32_wo_header.add(0) }, unsafe{ &*ptr32_wo_header.add(1) });
   
-  #[test]
-  fn it_works2() -> Result<()> {
+    //   println!("{:?} {:?}", unsafe { &*ptr8_mut.add(33) }, unsafe{ &*ptr8_mut.add(34) });
+    //   for i in 0..(320*240) {
+    //     unsafe { *ptr8_mut.add(33 + i) = src; } 
+    //   }
+    //   println!("{:?} {:?}", unsafe { &*ptr8_mut.add(33) }, unsafe{ &*ptr8_mut.add(34) });
 
-    // https://blog.rust-lang.org/2023/12/28/Rust-1.75.0.html
 
-    let name = OsStr::new("shared_memory").encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
-    let handle = unsafe { CreateFileMappingW(null_mut(), null_mut(), PAGE_READWRITE, 0, 1024, name.as_ptr()) };
-    
-    if handle.is_null() {
-      println!("Failed to create file mapping: {}", unsafe { GetLastError() });
-    }
-    
-    let view = unsafe { MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, 1024) };
-    
-    if view.is_null() {
-      println!("Failed to map view of file: {}", unsafe { GetLastError() });  
-    }
-
-    unsafe {
-
-      let ptr = std::slice::from_raw_parts_mut(view as *mut u8, 1024).as_ptr();
-      let slice  = std::ptr::slice_from_raw_parts(view as *const u8, 1024);
-      // let first_element = u8_slice[2] as u8;
-      println!("{:?}", *ptr.add(0) as u8);
-      println!("{:?}", *ptr.add(1) as u8);
-
-      // println!("{} {:?}", slice.len(), *slice[0]);
-
-    }
-    
     Ok(())
   }
 
 
+  // https://github.com/wez/wezterm/blob/3ec1cfba730b20e0426b6de106201bd7f32d4125/wezterm-client/src/discovery.rs#L24
+
+  
 }

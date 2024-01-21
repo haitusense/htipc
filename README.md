@@ -34,10 +34,10 @@ ps> winget install --id Git.Git
 ps> pip install maturin
 
 # install from github
-ps> pip install 'git+https://github.com/haitusense/sandbox.git#egg=sandboxPyo&subdirectory=pyo3'
+ps> pip install 'git+https://github.com/haitusense/htipc.git#egg=htipcPyo&subdirectory=pyo3'
 
 # uninstall from github
-ps> pip uninstall sandboxPyo
+ps> pip uninstall htipcPyo
 ```
 
 ## Description

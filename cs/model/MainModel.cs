@@ -6,55 +6,90 @@ using Accessibility;
 
 namespace SimpleGUI;
 
+/*
+
+
+   ┌──────────────┐  NamedPipe ┌──Action─────────┐
+   │              ├───────────►│                 │
+   │    scripts   │            │                 │
+   │              ├─────┐      │                 │
+   └──────────────┘     │      │                 │
+                        │      │                 │
+   ┌──UI──────────┐     │      │                 │
+   │              │     ▼      │                 │
+   │ ┌──────────┐   ┌───────┐  │                 │
+   │ │          ├──►│  mmf  │◄─┤                 │
+   │ │javascript│   └───────┘  │                 │
+   │ │          │   postMessage│                 │
+   │ │          ├─────────────►│                 │
+   │ └──────────┘              │                 │
+   │       ▲      │            └──────┬──┬───────┘
+   └────── │ ─────┘                   │  │
+        ▲  │                          │  │
+        │  └──────────────────────────┘  │
+        │        addEventListener        │
+        │       ExecuteScriptAsync       │
+        │                                │
+        └────────────────────────────────┘
+                 System.Windows
+*/
+
+
 [ClassInterface(ClassInterfaceType.AutoDual)]
 [ComVisible(true)]
-public class MainModel {
-  protected internal Microsoft.Web.WebView2.Wpf.WebView2 webView;
-  protected internal MainWindow window;
+public class A;
 
-  private MemoryMap<int> memoryMap = new MemoryMap<int>("MyMemoyMap",320,240);
+// webView2.CoreWebView2.AddHostObjectToScript("jscall", new JsCall());
+
+public class MainModel {
+  protected internal MainWindow window;
 
   private MainModel() { }
 
-  protected internal static async Task<MainModel> Build(MainWindow window, Microsoft.Web.WebView2.Wpf.WebView2 webView) {
+  protected internal static async Task<MainModel> Build(MainWindow window) {
 
     var obj = new MainModel();
     obj.window = window;
-    obj.webView = webView;
-    webView.CoreWebView2.AddHostObjectToScript("SimpleGUI", obj);
-    
-    webView.CoreWebView2.OpenDevToolsWindow();
-    
-    "SimpleGUI.resource.app.js".res_to_resContents().register_js(webView);
-    // "SimpleGUI.resource.index.html".res_to_resContents().ShowMessageBoxLite();
-    "SimpleGUI.resource.index.html".res_to_resContents().navigate_form_content(webView);
-    // @"https://www.microsoft.com".navigate_form_url(webView);
+    MemoryMapSingleton.GetInstance().Create("SimpleGuiMmf",320, 240);
 
-    NamedPipe.Run("SimpleGUI", window, (n, m) =>{
-      var dst = System.Text.Json.JsonSerializer.Deserialize<string[]>(n);
-      obj.Actions(dst)
-    );
+    window.webView.CoreWebView2.OpenDevToolsWindow();
+    "SimpleGUI.resource.app.js".res_to_resContents().register_js(window.webView);
+    // "SimpleGUI.resource.index.html".res_to_resContents().ShowMessageBoxLite();
+    "SimpleGUI.resource.index.html".res_to_resContents().navigate_form_content(window.webView);
+    // @"https://www.microsoft.com".navigate_form_url(webView);
 
     return obj;
   }
 
-  public string Actions(string[] src){
-    Action act = src[0] switch {
+  public void Actions(string src, string sub = ""){
+    var com = System.Text.Json.JsonSerializer.Deserialize<string[]>(src);
+    window.webView.ExecuteScriptAsync($$""" console.log({{src}}) """);
+    Action act = com[0] switch {
       "DOMContentLoaded" =>()=> { window.statusLabel.Text = "DOMContentLoaded"; },
       "load" =>()=> { window.statusLabel.Text = "load"; },
-      "draw" =>()=> { window.statusLabel.Text = "draw"; },
       "fill" =>()=> {
+        window.webView.ExecuteScriptAsync($$""" console.log("fill start") """);
+        byte n = 0;
+        byte.TryParse(com[1], out n);
+        var buf = new byte[MemoryMapSingleton.GetInstance().Length()];
+        for(int i=0;i < buf.Length; i++){
+          buf[i] = n;
+        }
+        MemoryMapSingleton.GetInstance().WritePixels(buf);
+        window.webView.ExecuteScriptAsync($$""" console.log("fill end") """);
+        window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas") """);
+      },
+      "draw" =>()=> {
         // webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($$""" console.log("fill") """);
-        webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{src[1]}}) """);
+        window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas") """);
         // webView.CoreWebView2.PostWebMessageAsJson(json);
       },
       "eval" =>()=> {
-        webView.ExecuteScriptAsync($$""" {{src[1]}}) """);
+        window.webView.ExecuteScriptAsync(com[1]);
       },
       _=>()=> {}
     };
     act();
-    return "OK";
   }
 }
-// await 
+
