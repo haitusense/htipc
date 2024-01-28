@@ -60,3 +60,7 @@ graph LR
   Python-->|win32pipe.CreateNamedPipe|GUI
   Python<-->|mmap|Table1
 ```
+| rust | pyo3  | python | R |
+| :--: | :--: | :--: | :--: |
+| i8 - i64, u8 - u32 | PyLong  | int  | |
+| f32, f64           | PyFloat | float | |

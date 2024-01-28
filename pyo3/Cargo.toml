@@ -13,9 +13,11 @@ anyhow = "*"
 colored = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
+indoc = "*"
 
 pyo3 = { version = "*", features = ["anyhow"] }
+numpy = "*"
 serde-pyobject = "*"
 
-htipc = { path = "../core/", features = ["python"] }
-# htipc = { git = "https://github.com/haitusense/htipc/", features = ["python"] }
+htipc = { path = "../rust/core", features = ["python"] }
+# htipc = { git = "https://github.com/haitusense/htipc/", branch = "20240114", features = ["python"] }

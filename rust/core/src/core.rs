@@ -42,7 +42,7 @@ pub enum Commands {
 }
 
 // commandを使用するため、clap::Args -> clap::Parser
-#[derive(clap::Parser, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(argsproc::PyRffi ,clap::Parser, serde::Serialize, serde::Deserialize, Debug)]
 pub struct PipeArgs {
   #[arg(num_args(1))] 
   pub addr: String,
@@ -59,41 +59,12 @@ pub struct PipeArgs {
   #[arg(short, long, help = "default : inf.[ms]")] 
   pub write_timeout: Option<u32>,
 
-  #[arg(short, long, default_value_t = false, help = "use serialize json")] 
-  pub json: bool,
+  #[arg(short, long, help = "use serialize json")] 
+  pub json: Option<bool>, // true, falseの入力を強制（py側で破綻させないため）
 }
 
 impl PipeArgs {
-  #[cfg(feature="python")]
-  pub fn from_pydict(args: &pyo3::types::PyAny, kwargs: Option<&pyo3::types::PyDict>) -> anyhow::Result<Self> {
-    let args = serde_pyobject::from_pyobject::<serde_json::Value>(args).context("err")?;
-    let kwargs = match kwargs {
-      Some(n) => serde_pyobject::from_pyobject::<serde_json::Value>(n).context("err")?,
-      None => serde_json::json!({})
-    };
-    let dst = Self::from_args_value(args, kwargs)?;
-    Ok(dst)
-  }
-  pub fn from_args_vec<I, T>(itr: I) -> anyhow::Result<Self>
-    where I: IntoIterator<Item = T>, T: Into<std::ffi::OsString> + Clone, {
-    use clap::{CommandFactory, FromArgMatches};
-    let am = Self::command().try_get_matches_from(itr).context("err")?;
-    let dst = Self::from_arg_matches(&am).context("err")?;
-    Ok(dst)
-  }
-  pub fn from_args_value(args:serde_json::Value, kwargs:serde_json::Value) -> anyhow::Result<Self> {
-    let mut args_vec = vec!["Cli".to_string()];
-    for val in args.as_array().context("err")? {
-      args_vec.push(format!("{}", val.to_string()));
-    }
-    let object = kwargs.as_object().context("err")?;
-    for (key, value) in object {
-      args_vec.push(format!("--{}", key));
-      args_vec.push(format!("{}", value.to_string()));
-    }
-    let dst = Self::from_args_vec(args_vec)?;
-    Ok(dst)
-  }
+
   pub fn to_value(&self) -> anyhow::Result<serde_json::Value> {
     Ok(serde_json::to_value(&self).context("err")?)
   }
@@ -101,16 +72,17 @@ impl PipeArgs {
 
   pub fn get_command_string(&self) -> String { 
     match (self.commands.clone(), self.json) {
-      (Some(n), false) => format!("{}", n.join(" ")),
-      (Some(n), true) => serde_json::to_string(&n).unwrap(),
-      (None, true) => serde_json::json!({ }).to_string(),
+      (Some(n), None) => format!("{}", n.join(" ")),
+      (Some(n), Some(false)) => format!("{}", n.join(" ")),
+      (Some(n), Some(true)) => serde_json::to_string(&n).unwrap(),
+      (None, Some(true)) => serde_json::json!({ }).to_string(),
       _ => "".to_string()
     }
   }
   pub fn get_addr_string(&self) -> String { format!(r##"\\.\pipe\{}"##, self.addr) }
 }
 
-pub fn namedpipe(args:PipeArgs) -> &'static str {
+pub fn namedpipe(args: PipeArgs) -> &'static str {
   cprintln!(blue: "connecting", args.addr);
   cprintln!(blue: "sending",  args.get_command_string());
   println!("{:?}", args.to_json());
@@ -124,5 +96,50 @@ pub fn namedpipe(args:PipeArgs) -> &'static str {
       cprintln!(red: "ERROR", e);
       "ERR"
     }
+  }
+}
+
+pub fn header(path: &str) -> anyhow::Result<memorymappedfile::Header> {
+  crate::memorymappedfile::header(path)
+}
+
+pub fn get_i32pixel(path: &str, index: usize) -> anyhow::Result<i32> {
+  crate::memorymappedfile::get_pixel(path, index)
+}
+
+pub fn set_i32pixel(path: &str, index: usize, val: i32) -> anyhow::Result<()> {
+  crate::memorymappedfile::set_pixel(path, index, val)
+}
+
+pub fn get_i32pixels(path: &str, index: usize, src: &mut Vec<i32>) -> anyhow::Result<()> {
+  crate::memorymappedfile::get_pixels(path, index, src)
+}
+
+pub fn set_i32pixels(path: &str, index: usize, src: &mut Vec<i32>) -> anyhow::Result<()> {
+  crate::memorymappedfile::set_pixels(path, index, src)
+}
+
+// pub fn fill(path:&str, val:u8) -> anyhow::Result<()> {
+// pub fn lattice(path:&str) -> anyhow::Result<()> {
+
+
+mod tests {
+
+
+  #[test]
+  fn it_works_mmf() -> anyhow::Result<()> {
+
+    let mut hoge = vec![0i32; 320 * 240];
+    for y in 0..240 {
+      for x in 0..320 {
+        hoge[x + y * 320] = (x % 10) as i32;
+      }
+    }
+    super::memorymappedfile::write_array::<i32>("SimpleGuiMmf", 32, &mut hoge)?;
+
+    let args = PipeArgs::from_clap_vec(vec!["PipeArgs", "SimpleGui", "draw", "--json", "true"])?;
+    let _ = super::namedpipe(args);
+    
+    Ok(())
   }
 }

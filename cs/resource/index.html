@@ -15,11 +15,46 @@
 
 <script>
 if(!window.chrome.webview) alert('webview not found');
-let canvas = null;
 
 // addEventListener DOMContentLoaded
-window.addEventListener('DOMContentLoaded', async () => window.chrome.webview.postMessage('DOMContentLoaded'));
-window.addEventListener('load', () => window.chrome.webview.postMessage('load'));
+window.addEventListener('DOMContentLoaded', () => window.chrome.webview.postMessage('DOMContentLoaded'));
+
+window.addEventListener('load', () => {
+  action('["load"]')
+  action('["fill"]')
+
+  document.getElementById("canvas").addEventListener('mousemove', async (event) => {
+    // parseInt()はバグの温床
+    // https://cpplover.blogspot.com/2009/06/dom-level-3.html
+    const rect = event.target.getBoundingClientRect() ;
+    const x = Math.trunc(event.clientX - rect.left);
+    const y = Math.trunc(event.clientY - rect.top);
+    action(`["mousemove", "${x}", "${y}"]`);
+  });
+
+  document.getElementById("canvas").addEventListener('mousewheel', async (event)=>{
+    if (event.shiftKey) {
+      event.preventDefault();
+      if (event.wheelDelta > 0) { 
+        action('["shiftup"]');
+      } else { 
+        action('["shiftdown"]');
+      }
+    } else if(event.ctrlKey) {
+      // event.preventDefault();
+      if (event.wheelDelta > 0) {
+        action('["zoomup"]');
+      } else {
+        action('["zoomdown"]');
+      }
+      // stage.style.transform = `scale(${canvas_scale})`;
+    } else {
+      // console.log(`${event.wheelDelta}`)
+    }
+
+  }); 
+
+});
 
 // addEventListener webview message
 window.chrome.webview.addEventListener('message', (e) => {
@@ -28,33 +63,11 @@ window.chrome.webview.addEventListener('message', (e) => {
     case "message":
       console.log(`from cs ${json.type} : ${json.payload}`.yellow());
       break;
-    case "csx":
-      console.log(`from csx ${json.payload}`);
-      break;
-    case "text":
-      console.log(json.payload);
-      document.getElementById(json.payload.id).value = json.payload.value;
-      break;
-    case "plot":
-      document.getElementById("plot").innerHTML = json.payload;
-      break;
     default:
-      console.log(`from cs ${json.type}`);
       console.log(e);
   }
 });
 
-
-// Event
-const draw = async (color) => {
-  const squid = chrome.webview.hostObjects.Squid;
-  // let result = await squid.ReadMemoryMap();
-  // SquidJS.DrawFromInt32('canvas', result)
-
-  // await SquidJS.drawFromMemoryMap('canvas', color)
-  await SquidJS.drawFromMemoryMap('canvas', color, 1)
-}
-
-
 </script>
+
 </html>

@@ -7,20 +7,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "htipc"
-path = "src/lib.rs"
 crate-type = [ "rlib", "cdylib" ]
 
-[[bin]]
-name = "htipc"
-path = "src/main.rs"
-
 [features]
-default = []
+default = ["pyo3",]
 r-lang = ["extendr-api"]
 python = ["pyo3", "serde-pyobject"]
 
 [dependencies]
+argsproc = { workspace = true }
+
 anyhow = "*"
 thiserror = "*"
 serde = { version = "*", features = ["derive"] }
@@ -31,7 +27,7 @@ wildmatch = "2.3.0"
 clap = { version = "4.4.10", features = ["derive",] }
 
 extendr-api = { optional = true, version = "*" }
-pyo3 = { optional = true, version = "*" }
+pyo3 = { optional = true, version = "*", features = ["auto-initialize",] }
 serde-pyobject = { optional = true, version ="*" }
 
 # namedpipe

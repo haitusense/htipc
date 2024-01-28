@@ -75,7 +75,7 @@ public static class ResourceEx {
     return paths;
   }
 
-  public static string res_to_resContents(this string path) {
+  public static string res_to_contents(this string path) {
     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
     using(var stream = assembly.GetManifestResourceStream(path))
     using(var streamReader = new System.IO.StreamReader(stream)) 

@@ -2,7 +2,6 @@ use anyhow::{Result, bail, Context as _};
 use thiserror::Error; 
 use named_pipe::PipeClient;
 use std::io::{Write, Read};
-// use std::os::windows::ffi::OsStrExt;
 
 #[allow(dead_code)]
 #[derive(Error, Debug)]
@@ -15,6 +14,22 @@ pub enum NamedPipeError {
 
   #[error("Timeout")]
   Timeout,
+}
+
+pub fn search(src: &str)  {
+  // use regex : match regex::Regex::new(src)?.is_match(n.file_name().to_string_lossy().into_owned().as_str()) { }
+  // use glob  : for entry in glob::glob(r"\\.\pipe\*").unwrap() { }
+  
+  let wm = wildmatch::WildMatch::new(src);
+  let entries = std::fs::read_dir(r"\\.\pipe\").unwrap();
+  for entry in entries {
+    if let Ok(n) = entry {
+      match wm.matches(n.file_name().to_string_lossy().into_owned().as_str()) {
+        true => println!("true : {:?}", n.path()),
+        false => println!("false : {:?}", n.path()),
+      }
+    }
+  }
 }
 
 pub fn send(args: super::PipeArgs) -> Result<String> {
@@ -61,29 +76,13 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
 }
 
 
-pub fn search(src: &str)  {
-  // use regex : match regex::Regex::new(src)?.is_match(n.file_name().to_string_lossy().into_owned().as_str()) { }
-  // use glob  : for entry in glob::glob(r"\\.\pipe\*").unwrap() { }
-  
-  let wm = wildmatch::WildMatch::new(src);
-  let entries = std::fs::read_dir(r"\\.\pipe\").unwrap();
-  for entry in entries {
-    if let Ok(n) = entry {
-      match wm.matches(n.file_name().to_string_lossy().into_owned().as_str()) {
-        true => println!("true : {:?}", n.path()),
-        false => println!("false : {:?}", n.path()),
-      }
-    }
-  }
-}
-
-
 #[allow(dead_code)]
 fn send2(pipename:&str, command:&str) -> Result<String> {
   use tokio::net::windows::named_pipe::ClientOptions;
   // use windows_sys::Win32::Foundation::ERROR_PIPE_BUSY;
   use tokio::io::{AsyncWriteExt, AsyncReadExt};
   use colored::Colorize;
+// use std::os::windows::ffi::OsStrExt;
 
   let pipeaddr = format!(r"\\.\pipe\{}", pipename);
   let command = format!("{}\r\n", command);
