@@ -119,11 +119,11 @@ pub fn set_i32pixels(path: &str, index: usize, src: &mut Vec<i32>) -> anyhow::Re
   crate::memorymappedfile::set_pixels(path, index, src)
 }
 
-// pub fn fill(path:&str, val:u8) -> anyhow::Result<()> {
-// pub fn lattice(path:&str) -> anyhow::Result<()> {
-
 
 mod tests {
+    use serde::Serialize;
+
+    use crate::memorymappedfile;
 
 
   #[test]
@@ -137,9 +137,39 @@ mod tests {
     }
     super::memorymappedfile::write_array::<i32>("SimpleGuiMmf", 32, &mut hoge)?;
 
-    let args = PipeArgs::from_clap_vec(vec!["PipeArgs", "SimpleGui", "draw", "--json", "true"])?;
+    let args = crate::PipeArgs::from_clap_vec(vec!["PipeArgs", "SimpleGui", "draw", "--json", "true"])?;
     let _ = super::namedpipe(args);
     
     Ok(())
   }
+
+
+  #[test]
+  fn it_works_ser() -> anyhow::Result<()> {
+    #[derive(Clone, Debug, Default, serde::Serialize)]
+    pub struct AA {
+      pub size : i32,
+      pub typecode :String,
+      pub c :bool,
+    }
+    let a = AA{ size:1, typecode:"2".to_string(), c:false };
+    // let b = serde_json::to_value(a).unwrap().as_object().unwrap().iter().collect::<Vec<_>>();
+
+    let b = serde_json::to_value(a).unwrap();
+    let c = b.as_object().unwrap().iter().filter_map(|n|{
+      if let Some(m) = n.1.as_i64() { return Some((n.0, m.to_string())); }
+      if let Some(m) = n.1.as_f64() { return Some((n.0, m.to_string())); }
+      if let Some(m) = n.1.as_str() { return Some((n.0, m.to_string())); }
+      if let Some(m) = n.1.as_bool() { return Some((n.0, m.to_string())); }
+      None
+    }).collect::<Vec<_>>();
+  
+    println!("{:?}", c);
+    
+    Ok(())
+  }
+
+
 }
+
+

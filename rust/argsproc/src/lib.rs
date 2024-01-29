@@ -43,12 +43,10 @@ pub fn derive_pyrffi(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
           None => Vec::new(),
           Some(n) => n.into_iter().fold(Vec::new(), |mut acc, i| {
             acc.push(format!("--{}", i.0));
-            acc.push(i.1.to_string());
+            acc.push(i.1.to_string().to_lowercase()); // True -> true
             acc
           })
         };
-        // prnint!("{:?}", vec_args);
-        // prnint!("{:?}", vec_kwargs);
         let mut dst = vec![stringify!(#struct_name).to_string()];
         dst.append(&mut vec_args);
         dst.append(&mut vec_kwargs);
@@ -69,35 +67,16 @@ pub fn derive_pyrffi(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             };
             let m = R!("eval({{ &n.1 }})").unwrap();
             match m.rtype() {
-              Rtype::Rstr => acc.push(m.as_str().unwrap().to_string()),
               Rtype::Logicals => acc.push(m.as_bool().unwrap().to_string()),
               Rtype::Integers => acc.push(m.as_integer().unwrap().to_string()),
               Rtype::Doubles => acc.push(m.as_real().unwrap().to_string()),
+              Rtype::Rstr => acc.push(m.as_str().unwrap().to_string()),
               Rtype::Strings => acc.push(m.as_str().unwrap().to_string()),
               _=> panic!("Syntax error")
             };
             acc
           }
         );
-        // for n in vec {
-        //   match n.0 {
-        //     "" => { },
-        //     "NA" => { },
-        //     _ => { vec_args.push(format!("--{}", n.0)) },
-        //   }
-      
-        //   let m = R!("eval({{ n.1 }})").unwrap();
-        //   match m.rtype() {
-        //     Rtype::Rstr => vec_args.push(m.as_str().unwrap().to_string()),
-        //     Rtype::Logicals => vec_args.push(m.as_bool().unwrap().to_string()),
-        //     Rtype::Integers => vec_args.push(m.as_integer().unwrap().to_string()),
-        //     Rtype::Doubles => vec_args.push(m.as_real().unwrap().to_string()),
-        //     Rtype::Strings => vec_args.push(m.as_str().unwrap().to_string()),
-        //     _=> panic!("Syntax error")
-        //   };
-        // }
-        // let mut dst = vec![stringify!(#struct_name).to_string()];
-        // dst.append(&mut vec_args);
         Self::from_clap_vec(dst)
       }
 
@@ -114,6 +93,40 @@ pub fn derive_pyrffi(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
   };
   gen.into()
 }
+
+#[proc_macro_derive(PyRffiSerde)]
+pub fn derive_serde(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  let item = parse_macro_input!(input as ItemStruct);
+  let struct_name = item.ident;
+  let gen = quote! {
+
+    impl #struct_name {
+
+      #[cfg(feature="python")]
+      pub fn to_strcut_pyany<'p>(&self, py: Python<'p>) -> anyhow::Result<&'p PyAny> {
+        let obj: &'p PyAny = serde_pyobject::to_pyobject(py, &self).context("err")?
+        Ok(obj)
+      }
+
+      #[cfg(feature="r-lang")]
+      pub fn to_strcut_pairlist(&self) -> anyhow::Result<Pairlist> {
+        let a = serde_json::to_value(self).context("err")?;
+        let b = a.as_object().context("err")?.iter().filter_map(|n|{
+          if let Some(m) = n.1.as_i64() { return Some((n.0, r!(m))); }
+          if let Some(m) = n.1.as_f64() { return Some((n.0, r!(m))); }
+          if let Some(m) = n.1.as_str() { return Some((n.0, r!(m))); }
+          if let Some(m) = n.1.as_bool() { return Some((n.0, r!(m))); }
+          None
+        }).collect::<Vec<_>>();
+        Ok(Pairlist::from_pairs(&b))
+      }
+    }
+
+  };
+  gen.into()
+}
+
+
 
 #[proc_macro_attribute]
 pub fn show_streams(attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -134,4 +147,15 @@ pub fn show_streams(attr: proc_macro::TokenStream, item: proc_macro::TokenStream
   gen.into()
 }
 
-// let args = serde_pyobject::from_pyobject::<serde_json::Value>(args).context("err")?;
+  // println!("option a = {}", args.to_real("a").unwrap_or(-1f64) );
+  // println!("option b = {}", args.to_char("b").unwrap_or("na") );
+  // let mut send_string = String::new();
+  // // RObj -> Option<&'a str>
+  // if let Some(n) = value.as_str() {
+  //   send_string = n.to_string();
+  // }
+  // // Rtype::List
+  // if value.rtype() == Rtype::List {
+  //   let robj = R!("jsonlite::toJSON({{ value }})").unwrap();
+  //   send_string = robj.as_str().unwrap().to_string();
+  // }

@@ -36,12 +36,13 @@ fn timeout<T>(ms:u64, fp: fn(std::time::Instant) -> Option<anyhow::Result<T>> ) 
 }
 
 /******** for py *********/
+
 pub fn env() -> anyhow::Result<std::collections::HashMap<String, String>> {
   println!("{} {} by {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_AUTHORS"));
   let mut dst = std::collections::HashMap::<String, String>::new();
-  dst.insert("PKG_NAME".to_string(), env!("CARGO_PKG_NAME").to_string());
-  dst.insert("PKG_VERSION".to_string(), env!("CARGO_PKG_NAME").to_string());
-  dst.insert("PKG_AUTHORS".to_string(), env!("CARGO_PKG_AUTHORS").to_string());
+  dst.insert("NAME".to_string(), env!("CARGO_PKG_NAME").to_string());
+  dst.insert("VERSION".to_string(), env!("CARGO_PKG_VERSION").to_string());
+  dst.insert("AUTHORS".to_string(), env!("CARGO_PKG_AUTHORS").to_string());
   Ok(dst)
 }
 
@@ -51,23 +52,6 @@ pub fn env2() {
 }
 
 
-// #[allow(dead_code)]
-// #[derive(Copy, Clone, Debug, Default)]
-// #[pyclass]
-// pub struct Header {
-//   size : i32,
-//   typecode :i32,
-//   width: i32,
-//   height: i32,
-//   depth: i32,
-//   dummy1: i32,
-//   dummy2: i32,
-//   dummy3: i32,
-// }
-
-// pub fn header(path: &str) -> anyhow::Result<core::memorymappedfile::Header> {
-//   read_header(path)
-// }
 
 
 

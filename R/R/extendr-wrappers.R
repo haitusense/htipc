@@ -7,6 +7,9 @@ NULL
 
 #' Return string `"Hello world!"` to R.
 #' @export
-namedpipe <- function(path, value, ...) .Call(wrap__namedpipe, path, value, eval(substitute(alist(...))))
+namedpipe <- function(...) .Call(wrap__namedpipe, eval(substitute(alist(...))))
+
+env <- function() .Call(wrap__env)
+header <- function(path) .Call(wrap__header, path)
 
 # nolint end

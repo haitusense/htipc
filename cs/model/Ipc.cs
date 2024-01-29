@@ -26,6 +26,8 @@ public class NamedPipeSingleton {
 
   public void Cancel() => _cancelServer.Cancel();
 
+  public event Action<object, int> TestEvent;
+
   public void Run<T>(string path, T window, Action<string, bool> callback) where T : System.Windows.Window {
     void Dispatcher(string src, bool err){
       window.Dispatcher.Invoke((Action)(() => { callback(src, err); }));

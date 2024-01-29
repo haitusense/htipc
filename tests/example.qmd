@@ -1,0 +1,26 @@
+
+
+```{r}
+install.packages(paste(getwd(), "/R", sep = ""), repos = NULL, type = "source")
+```
+
+```{r}
+remove.packages("htipcR")
+```
+
+
+
+```{r}
+library(htipcR)
+a <- env()
+a
+header("SimpleGuiMmf")
+
+namedpipe("SimpleGui", "draw", json = TRUE)
+
+```
+
+```{r}
+library(htipcR)
+namedpipe("SimpleGui", "shift", 10, json = TRUE)
+```

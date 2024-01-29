@@ -9,8 +9,11 @@
   }
 </style>
 
-<body>
-  <canvas id="canvas" width="320" height="240"></canvas>
+<body >
+  <canvas id="canvas" width="320" height="240"
+  ondrop="dropHandler(event);"
+  ondragover="dragOverHandler(event);"
+  ></canvas>
 </body>
 
 <script>
@@ -21,7 +24,7 @@ window.addEventListener('DOMContentLoaded', () => window.chrome.webview.postMess
 
 window.addEventListener('load', () => {
   action('["load"]')
-  action('["fill"]')
+  action('["draw"]')
 
   document.getElementById("canvas").addEventListener('mousemove', async (event) => {
     // parseInt()はバグの温床
@@ -54,6 +57,12 @@ window.addEventListener('load', () => {
 
   }); 
 
+  window.addEventListener('keydown', async (event) => {
+    if(event.repeat == true) return;
+
+    console.log(`${event.shiftKey ? "shift + " : ""}${event.ctrlKey ? "ctrl + " : ""}${event.altKey ? "alt + " : ""}${event.key}`);
+  });
+
 });
 
 // addEventListener webview message
@@ -68,6 +77,34 @@ window.chrome.webview.addEventListener('message', (e) => {
   }
 });
 
+function dropHandler(ev) {
+  console.log("File(s) dropped");
+
+  // Prevent default behavior (Prevent file from being opened)
+  ev.preventDefault();
+
+  if (ev.dataTransfer.items) {
+    // Use DataTransferItemList interface to access the file(s)
+    [...ev.dataTransfer.items].forEach((item, i) => {
+      // If dropped items aren't files, reject them
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        console.log(`… file[${i}].name = ${file.name}`);
+      }
+    });
+  } else {
+    // Use DataTransfer interface to access the file(s)
+    [...ev.dataTransfer.files].forEach((file, i) => {
+      console.log(`… file[${i}].name = ${file.name}`);
+    });
+  }
+}
+function dragOverHandler(ev) {
+  console.log("File(s) in drop zone");
+
+  // Prevent default behavior (Prevent file from being opened)
+  ev.preventDefault();
+}
 </script>
 
 </html>

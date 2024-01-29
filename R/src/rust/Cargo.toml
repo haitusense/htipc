@@ -10,6 +10,8 @@ name = 'htipcR'
 [dependencies]
 extendr-api = '*'
 colored = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
 
-htipc = { path = "../../../core/", features = ["r-lang"] }
+htipc = { path = "../../../rust/core", features = ["r-lang"] }
 # htipc = { git = "https://github.com/haitusense/htipc/", features = ["r-lang"] }

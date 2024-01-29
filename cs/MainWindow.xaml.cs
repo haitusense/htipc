@@ -64,13 +64,13 @@ public partial class MainWindow : Window {
     }
 
     private /*async*/ void MessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args) {
-        var json = args.TryGetWebMessageAsString();
         /*
             postMessage({'a': 'b'})      ArgumentException
             postMessage(1.2)             ArgumentException
             postMessage('example')       "example"
         */
-        Console.WriteLine($" MessageReceived : {json} ");
+        var json = args.TryGetWebMessageAsString();
+        // Console.WriteLine($" MessageReceived : {json} ");
         model.Actions(json);
     }
 }
