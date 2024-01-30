@@ -20,11 +20,11 @@
 if(!window.chrome.webview) alert('webview not found');
 
 // addEventListener DOMContentLoaded
-window.addEventListener('DOMContentLoaded', () => window.chrome.webview.postMessage('DOMContentLoaded'));
+window.addEventListener('DOMContentLoaded', () => action(`{ "type" : "message", "payload": ["DOMContentLoaded"] }`) );
 
 window.addEventListener('load', () => {
-  action('["load"]')
-  action('["draw"]')
+  action(`{ "type" : "message", "payload": ["load"] }`)
+  action(`{ "type" : "draw", "payload": [] }`)
 
   document.getElementById("canvas").addEventListener('mousemove', async (event) => {
     // parseInt()はバグの温床
@@ -32,23 +32,23 @@ window.addEventListener('load', () => {
     const rect = event.target.getBoundingClientRect() ;
     const x = Math.trunc(event.clientX - rect.left);
     const y = Math.trunc(event.clientY - rect.top);
-    action(`["mousemove", "${x}", "${y}"]`);
+    action(`{"type" : "mousemove", "payload": ["${x}", "${y}"] }`);
   });
 
   document.getElementById("canvas").addEventListener('mousewheel', async (event)=>{
     if (event.shiftKey) {
       event.preventDefault();
-      if (event.wheelDelta > 0) { 
-        action('["shiftup"]');
-      } else { 
-        action('["shiftdown"]');
+      if (event.wheelDelta > 0) {
+        action(`{ "type" : "shiftup", "payload": [] }`)
+      } else {
+        action(`{ "type" : "shiftdown", "payload": [] }`)
       }
     } else if(event.ctrlKey) {
       // event.preventDefault();
       if (event.wheelDelta > 0) {
-        action('["zoomup"]');
+        action(`{ "type" : "zoomup", "payload": [] }`)
       } else {
-        action('["zoomdown"]');
+        action(`{ "type" : "zoomdown", "payload": [] }`)
       }
       // stage.style.transform = `scale(${canvas_scale})`;
     } else {

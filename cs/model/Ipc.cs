@@ -12,8 +12,6 @@ using System.Windows.Documents;
 
 namespace SimpleGUI;
 
-// https://ufcpp.net/study/csharp/oop/generic-math-operators/
-
 public class NamedPipeSingleton {
   private NamedPipeSingleton() { }
   private static NamedPipeSingleton _instance;
@@ -26,12 +24,9 @@ public class NamedPipeSingleton {
 
   public void Cancel() => _cancelServer.Cancel();
 
-  public event Action<object, int> TestEvent;
+  public event Action<object, string> PipeMessageReceived;
 
-  public void Run<T>(string path, T window, Action<string, bool> callback) where T : System.Windows.Window {
-    void Dispatcher(string src, bool err){
-      window.Dispatcher.Invoke((Action)(() => { callback(src, err); }));
-    }
+  public void Run(string path) {
     var task = Task.Run(() => {
       while (true) {
         try{
@@ -40,13 +35,13 @@ public class NamedPipeSingleton {
             using(var sw = new StreamWriter(stream)){
               stream.WaitForConnection();
               var src = sr.ReadLine();
-              Dispatcher(src, true);
+              PipeMessageReceived(this, src);
               sw.WriteLine($"OK");
               stream.WaitForPipeDrain();
               sw.Flush();
           }
         } catch (Exception e) {
-          Dispatcher(e.ToString(), false);
+          PipeMessageReceived(this, e.ToString().to_json());
         }
       }
     });

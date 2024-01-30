@@ -60,7 +60,10 @@ pub struct PipeArgs {
   pub write_timeout: Option<u32>,
 
   #[arg(short, long, help = "use serialize json")] 
-  pub json: Option<bool>, // true, falseの入力を強制（py側で破綻させないため）
+  pub json: Option<bool>, // Optionにして、オプション指定時true, falseの入力を強制（py側で破綻させないため）
+
+  #[arg(short, long, help = "use serialize json")] 
+  pub action: Option<bool>,
 }
 
 impl PipeArgs {
@@ -71,11 +74,14 @@ impl PipeArgs {
   pub fn to_json(&self) -> anyhow::Result<String> { Ok(serde_json::to_string(self).context("err")?) }
 
   pub fn get_command_string(&self) -> String { 
-    match (self.commands.clone(), self.json) {
-      (Some(n), None) => format!("{}", n.join(" ")),
-      (Some(n), Some(false)) => format!("{}", n.join(" ")),
-      (Some(n), Some(true)) => serde_json::to_string(&n).unwrap(),
-      (None, Some(true)) => serde_json::json!({ }).to_string(),
+    match (self.commands.clone(), self.json, self.action) {
+      (Some(n), _, Some(true)) => {
+        serde_json::json!({ "type": n[0], "payload": n[1..]}).to_string()
+      },
+      (Some(n), None, _) => format!("{}", n.join(" ")),
+      (Some(n), Some(false), _) => format!("{}", n.join(" ")),
+      (Some(n), Some(true), _) => serde_json::to_string(&n).unwrap(),
+      (None, Some(true), _) => serde_json::json!({ }).to_string(),
       _ => "".to_string()
     }
   }

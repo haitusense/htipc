@@ -52,6 +52,22 @@ pub fn env2() {
 }
 
 
+mod tests {
+
+#[test]
+fn it_works_ser() -> anyhow::Result<()> {
+  use clap::{CommandFactory, FromArgMatches};
+  let am = crate::core::PipeArgs::command().try_get_matches_from(vec!["cli","ADDR","A","B","C", "--action", "true"]).unwrap();
+  let dst = crate::core::PipeArgs::from_arg_matches(&am).unwrap();
+
+  println!("{:?}", dst.get_addr_string());
+  println!("{:?}", dst.get_command_string());
+  
+  Ok(())
+}
+
+
+}
 
 
 

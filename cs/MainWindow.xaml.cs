@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -11,6 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
+using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 
 namespace SimpleGUI;
@@ -30,8 +32,11 @@ public partial class MainWindow : Window {
         AttachConsole(-1);
         // Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
         InitializeComponent();
+
         Application.Current.DispatcherUnhandledException += OnDispatcherUnhandledException;
-        this.webView.CoreWebView2InitializationCompleted += WebView2InitializationCompleted;
+
+        // (object sender, CoreWebView2InitializationCompletedEventArgs e)
+        this.webView.CoreWebView2InitializationCompleted += (s, e) => Console.WriteLine("WebView2InitializationCompleted");
     }
 
     private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e) {
@@ -41,37 +46,33 @@ public partial class MainWindow : Window {
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) {
         Console.WriteLine("Window_Loaded");
+
         var webview_options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
         var environment = await CoreWebView2Environment.CreateAsync(null, null, webview_options);  
         await this.webView.EnsureCoreWebView2Async(environment);// WebView2初期化完了確認
 
-        this.webView.NavigationCompleted += webView_NavigationCompleted;
-        this.webView.CoreWebView2.WebMessageReceived += MessageReceived;
-
         model = await MainModel.Build(this);
-        this.webView.CoreWebView2.AddHostObjectToScript("SimpleGuiMmf", MemoryMapSingleton.GetInstance());
-        NamedPipeSingleton.GetInstance().Run("SimpleGui", this, (n, m) => model.Actions(n) );
-    }
-    
-    private void WebView2InitializationCompleted(object sender, CoreWebView2InitializationCompletedEventArgs e) {
-        Console.WriteLine("WebView2InitializationCompleted");
-    }
-
-    private void webView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e) {
-        Console.WriteLine("NavigationCompleted");
-        // this.statusLabel.Text = "webView_NavigationCompleted";
-        model.Actions("", e.ToString());
-    }
-
-    private /*async*/ void MessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args) {
+        NamedPipeSingleton.GetInstance().Run("SimpleGui");
+        
         /*
             postMessage({'a': 'b'})      ArgumentException
             postMessage(1.2)             ArgumentException
             postMessage('example')       "example"
         */
-        var json = args.TryGetWebMessageAsString();
-        // Console.WriteLine($" MessageReceived : {json} ");
-        model.Actions(json);
+        this.webView.CoreWebView2.WebMessageReceived += (/*object*/ s, /*CoreWebView2WebMessageReceivedEventArgs*/ e) => { model.Actions( e.TryGetWebMessageAsString() ); };
+        this.webView.NavigationCompleted += (/*object*/ s, /*CoreWebView2NavigationCompletedEventArgs*/ e) => { model.Actions( e.ToString().to_json() ); };
+        NamedPipeSingleton.GetInstance().PipeMessageReceived += (s, e) => { this.Dispatcher.Invoke(() => { model.Actions(e); }); };
+
+        this.webView.CoreWebView2.AddHostObjectToScript("SimpleGuiMmf", MemoryMapSingleton.GetInstance());
+    
     }
 }
 
+public struct A {
+    public string type {get; set; }
+    public string[] payload {get; set; }
+}
+
+public static class ActionEx{
+    public static string to_json(this string src) => JsonSerializer.Serialize(new A { type = "message", payload = new string[]{ src } });
+}

@@ -26,3 +26,53 @@
 |               |                         | get_fullpixel_array |
 |               |                         | set_fullpixel_array |
 
+## htipc option
+
+```ps1
+ps> htipc pipe ADDR A B C
+# addr : "\\\\.\\pipe\\ADDR
+# send : "A B C"
+
+ps> htipc pipe ADDR A B C --json true
+# addr : "\\\\.\\pipe\\ADDR"
+# send : "[\"A\",\"B\",\"C\"]"
+
+ps> htipc pipe A B C --action true
+# addr : "\\\\.\\pipe\\ADDR"
+# send : "{\"payload\":[\"B\",\"C\"],\"type\":\"A\"}"
+```
+
+
+## 関係ないけど文字列補間生文字リテラル比較
+
+c#とrustの{}の扱いが逆でハマる
+
+```rust
+// rust
+let arg = 1;
+let hoge = format!(r##" {{ "hoge" : {n} }}  "##);
+```
+
+```cs
+// c#
+var arg = 1;
+var hoge = $$""" { "hoge" : "{{arg}}" } """;
+```
+
+```javascript
+// javascript
+let arg = 1;
+let hoge = `{ "hoge" : ${arg}  }`;
+```
+
+```python
+# python3.6
+arg = 1
+hoge = f'{{ "hoge" : {arg} }}'
+```
+
+```R
+# R
+arg <- 1
+hoge <- stringr::str_glue('{{ "hoge" : {arg} }}')
+```

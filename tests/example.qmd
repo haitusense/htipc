@@ -24,3 +24,11 @@ namedpipe("SimpleGui", "draw", json = TRUE)
 library(htipcR)
 namedpipe("SimpleGui", "shift", 10, json = TRUE)
 ```
+
+
+
+```{r}
+arg <- 1
+hoge <- stringr::str_glue('{{ "hoge" : {arg} }}')
+print(hoge)
+```
