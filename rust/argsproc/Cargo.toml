@@ -9,7 +9,9 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
 syn = { version = "*", features = ["full", "extra-traits"] }
 quote = "*"
 proc-macro2 = "*"
-

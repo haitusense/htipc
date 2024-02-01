@@ -6,12 +6,12 @@ sending a command using a namedpipe.
 
 ### commandline
 
-```ps
+```ps1
 # install
 ps> cargo install --git https://github.com/haitusense/htipc
-#uninstall
+# uninstall
 ps> cargo uninstall htipc
-#help
+# help
 ps> htipc --help
 ```
 
@@ -60,7 +60,3 @@ graph LR
   Python-->|win32pipe.CreateNamedPipe|GUI
   Python<-->|mmap|Table1
 ```
-| rust | pyo3  | python | R |
-| :--: | :--: | :--: | :--: |
-| i8 - i64, u8 - u32 | PyLong  | int  | |
-| f32, f64           | PyFloat | float | |

@@ -170,6 +170,25 @@ mod tests {
   }
 
   #[test]
+  fn it_works_testddd() -> pyo3::PyResult<()> {
+    pyo3::Python::with_gil(|py| {
+      let code = indoc::formatdoc!{r#"
+        def func():
+          import htipcPyo
+          import numpy as np
+
+          htipcPyo.set_pixel("SimpleGuiMmf", 320 * 2 + 10 , 250)
+
+      "#};
+      let func = pyo3::types::PyModule::from_code(py, &code, "", "")?
+        .getattr("func")?;
+      let _ = func.call0()?;
+      Ok(())
+    })
+  }
+
+
+  #[test]
   fn it_works_headers() -> pyo3::PyResult<()> {
     pyo3::Python::with_gil(|py| {
       let np = py.import("numpy")?;

@@ -1,4 +1,5 @@
 use anyhow::{Result, bail, Context as _};
+use colored::Colorize;
 use thiserror::Error; 
 use named_pipe::PipeClient;
 use std::io::{Write, Read};
@@ -25,11 +26,12 @@ pub fn search(src: &str)  {
   for entry in entries {
     if let Ok(n) = entry {
       match wm.matches(n.file_name().to_string_lossy().into_owned().as_str()) {
-        true => println!("true : {:?}", n.path()),
-        false => println!("false : {:?}", n.path()),
+        true => { println!("{} {:?}", "matched".blue().bold(), n.path()); },
+        false => { },
       }
     }
   }
+  println!("{}", "finished".green().bold());
 }
 
 pub fn send(args: super::PipeArgs) -> Result<String> {
@@ -57,21 +59,17 @@ pub fn send(args: super::PipeArgs) -> Result<String> {
   pipe.write_all(format!("{com}\r\n").as_str().as_bytes())
     .context(NamedPipeError::CommunicationError("write_all".to_string()))?;
 
-
   // let mut buf = String::new();
   // pipe.read_to_string.(&mut buf).context(NamedPipeError::CommunicationError("read_to_string".to_string()))?;
   let mut buf = vec![0u8; 128];
   let mut string = String::new();
   loop {
     if let Ok(n)= pipe.read(&mut buf) { 
-      println!(".");
       string.push_str(&String::from_utf8_lossy(&buf[..n])); 
     }
-    else { println!("."); }
+    else {  }
     if string.contains('\n') { break; }
   }
-  println!("{:?}",string);
-
   Ok(string)
 }
 
@@ -81,7 +79,6 @@ fn send2(pipename:&str, command:&str) -> Result<String> {
   use tokio::net::windows::named_pipe::ClientOptions;
   // use windows_sys::Win32::Foundation::ERROR_PIPE_BUSY;
   use tokio::io::{AsyncWriteExt, AsyncReadExt};
-  use colored::Colorize;
 // use std::os::windows::ffi::OsStrExt;
 
   let pipeaddr = format!(r"\\.\pipe\{}", pipename);

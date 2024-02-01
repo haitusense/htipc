@@ -9,7 +9,6 @@ name = 'htipcR'
 
 [dependencies]
 extendr-api = '*'
-colored = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 

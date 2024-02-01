@@ -1,5 +1,7 @@
 pub mod namedpipe;
 pub mod memorymappedfile;
+use std::time::Instant;
+
 use anyhow::Context as _;
 
 use colored::Colorize;
@@ -91,8 +93,6 @@ impl PipeArgs {
 pub fn namedpipe(args: PipeArgs) -> &'static str {
   cprintln!(blue: "connecting", args.addr);
   cprintln!(blue: "sending",  args.get_command_string());
-  println!("{:?}", args.to_json());
-  println!("{:?}", args.to_value());
   match namedpipe::send(args) {
     Ok(src) => {
       cprintln!(green: "received", src);
@@ -126,11 +126,80 @@ pub fn set_i32pixels(path: &str, index: usize, src: &mut Vec<i32>) -> anyhow::Re
 }
 
 
+// let a = core::timeout::<u32>(10000u64, |now| {
+//   std::thread::sleep(std::time::Duration::from_micros(100u64));
+//   println!("{:?}", now.elapsed());
+//   None
+// });
+pub fn timeout<T>(ms:u64, fp: fn(std::time::Instant) -> Option<anyhow::Result<T>> ) -> anyhow::Result<T> {
+  let now = std::time::Instant::now();
+  while std::time::Duration::from_micros(ms) > now.elapsed() {
+    if let Some(n) = fp(now) { return n; } 
+  }
+  anyhow::bail!("err");
+}
+
+pub struct WaitCounter {
+  ms : u64,
+  time : Instant,
+  cnt : u8,
+  timeout : u64
+}
+
+use crossterm::{queue, cursor};
+use std::io::stdout;
+
+impl WaitCounter {
+  pub fn new() -> Self { 
+    Self { ms : 240, time : std::time::Instant::now(), cnt : 0, timeout : 10000 } 
+  }
+  pub fn init(&mut self) { self.time = std::time::Instant::now(); }
+  pub fn check(&mut self) {
+    if std::time::Duration::from_micros(self.ms) < self.time.elapsed() {
+      self.init();
+      self.cnt = (self.cnt + 1) & 0b11;
+      let n = match self.cnt {
+        0 => r"|",
+        1 => r"/",
+        2 => r"-",
+        3 => r"\",
+        _ => r"."
+    };
+      print!("{}", n);
+      queue!(stdout(), cursor::MoveLeft(1)).unwrap();
+    }
+  }
+
+  pub fn check_time(&mut self) -> bool {
+    let prog = self.time.elapsed();
+    if std::time::Duration::from_millis(self.timeout) > prog {
+      let n = match (prog.as_millis() / self.ms as u128) % 4 {
+        0 => r"|",
+        1 => r"/",
+        2 => r"-",
+        3 => r"\",
+        _ => r"."
+      };
+      let val = format!("{} {:.2} sec", n, prog.as_secs_f64());
+      queue!(stdout(), crossterm::cursor::Hide).unwrap();
+      print!("{val:<32}");
+      queue!(stdout(), cursor::MoveLeft(32)).unwrap();  
+      false
+    } else {
+      queue!(stdout(), crossterm::cursor::Show).unwrap();
+      true
+    }
+  }
+
+  pub fn stop(&mut self) {
+    queue!(stdout(), crossterm::cursor::Show).unwrap();
+    println!("");
+  }
+
+}
+
+
 mod tests {
-    use serde::Serialize;
-
-    use crate::memorymappedfile;
-
 
   #[test]
   fn it_works_mmf() -> anyhow::Result<()> {

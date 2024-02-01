@@ -34,10 +34,7 @@ public partial class MainWindow : Window {
         InitializeComponent();
 
         Application.Current.DispatcherUnhandledException += OnDispatcherUnhandledException;
-
-        // (object sender, CoreWebView2InitializationCompletedEventArgs e)
-        this.webView.CoreWebView2InitializationCompleted += (s, e) => Console.WriteLine("WebView2InitializationCompleted");
-    }
+            }
 
     private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e) {
         MessageBox.Show(e.Exception.ToString(), "DispatcherUnhandledException");
@@ -47,6 +44,7 @@ public partial class MainWindow : Window {
     private async void Window_Loaded(object sender, RoutedEventArgs e) {
         Console.WriteLine("Window_Loaded");
 
+        this.webView.CoreWebView2InitializationCompleted += (/*object*/ s, /*CoreWebView2InitializationCompletedEventArgs*/e) => Console.WriteLine("WebView2InitializationCompleted");
         var webview_options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
         var environment = await CoreWebView2Environment.CreateAsync(null, null, webview_options);  
         await this.webView.EnsureCoreWebView2Async(environment);// WebView2初期化完了確認
@@ -64,7 +62,7 @@ public partial class MainWindow : Window {
         NamedPipeSingleton.GetInstance().PipeMessageReceived += (s, e) => { this.Dispatcher.Invoke(() => { model.Actions(e); }); };
 
         this.webView.CoreWebView2.AddHostObjectToScript("SimpleGuiMmf", MemoryMapSingleton.GetInstance());
-    
+
     }
 }
 

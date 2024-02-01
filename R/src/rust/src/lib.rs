@@ -4,11 +4,6 @@ use extendr_api::prelude::*;
 
 
 /*
-htipcR::namedPipe("namedPipe", "value")
-
-dst <- list(type = jsonlite::unbox("text"), payload = list(id = "text", value = "aa"))
-htipcR::namedPipe("namedPipe", dst)
-
 suppressMessages(
 invisible(capture.output(htipcR::namedPipe("namedPipe", "value"), type = "message")) 
 */

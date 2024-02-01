@@ -104,7 +104,7 @@ public class MainModel {
   }
 
  
-  public struct B {
+  public struct Act {
       public string type {get; set; }
       public string[] payload {get; set; }
   }
@@ -112,7 +112,7 @@ public class MainModel {
   public void Actions(string json){
     try{
       Console.WriteLine(json);
-      var obj = System.Text.Json.JsonSerializer.Deserialize<B>(json);
+      var obj = System.Text.Json.JsonSerializer.Deserialize<Act>(json);
       Action<string[]> act;
       if (actions.TryGetValue(obj.type, out act)) { act(obj.payload); }
 

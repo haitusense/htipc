@@ -17,14 +17,19 @@ python = ["pyo3", "serde-pyobject"]
 [dependencies]
 argsproc = { workspace = true }
 
-anyhow = "*"
-thiserror = "*"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+colored = "*"
+
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
-colored = "*"
+
 regex = "1.10.2"
 wildmatch = "2.3.0"
+
 clap = { version = "4.4.10", features = ["derive",] }
+crossterm = "*"
+ctrlc = "3.4.2"
 
 extendr-api = { optional = true, version = "*" }
 pyo3 = { optional = true, version = "*", features = ["auto-initialize",] }
