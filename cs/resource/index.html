@@ -1,0 +1,110 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+
+<style type="text/css">
+  canvas {
+    image-rendering: pixelated;
+  }
+</style>
+
+<body>
+  <canvas id="canvas" width="320" height="240" ></canvas>
+</body>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js"></script> -->
+<script>
+  /*asyncだと間に合わない*/
+  window.addEventListener('DOMContentLoaded', () => console.log("DOMContentLoaded") );
+  window.addEventListener('load', () => console.log("loading") );
+</script>
+
+
+<script type="module">
+  console.log("module loading")
+  const { fromEvent, range, filter, debounceTime, Observable } = window.rxjs;
+
+  if(!window.chrome.webview) alert('webview not found');
+
+  /*
+    rxjs
+    const helloButton = document.querySelector('button');
+    const helloClick$ = new Observable((subscriber) => helloButton.addEventListener('click', (event) => { subscriber.next(event); }) );
+
+    // 書き換え
+    fromEvent(document.querySelector('button'), 'click').subscribe(e => { console.log("aa"); })
+    
+    helloClick$.subscribe((event) => console.log('Sub 1', event.type, event.x, event.y) );
+    helloClick$.subscribe((event) => console.log('Sub 2', event.type, event.x, event.y) );
+
+    const source = window.rxjs.interval(1000);
+    const example = window.rxjs.interval(2000);
+    const subscribe = example.subscribe((val) => console.log(val));
+
+    range(1, 200).pipe(filter((x) => x % 2 === 1), window.rxjs.map((x) => x + x)).subscribe((x) => console.log(x));
+  
+    hostobj
+    let state = {
+      "Name" : 0
+    }
+    let a = await chrome.webview.hostObjects.State.Name;
+    let b = await chrome.webview.hostObjects.State["Name"]; // リフレクションでのアクセス
+    state["Name"] = await chrome.webview.hostObjects.State["Name"];
+
+    .bufferTime(500).filter().subscribe() // ダブルクリック, 順列押しの判定
+    .debounceTime(100).subscribe() // 移動を止めたときにイベントを流す
+  */
+
+  // addEventListener webview message / DOM Control
+  console.log("Observe webview message")
+  const wvMessage$ = fromEvent(window.chrome.webview, 'message');
+  wvMessage$.pipe(filter(e => e.data === "Label")).subscribe(async (e) => {
+    chrome.webview.hostObjects.statusLabel.Text = await chrome.webview.hostObjects.State.Label;
+  });
+  wvMessage$.pipe(filter(e => e.data === "Shift")).subscribe(async (e) => {
+    let val = await chrome.webview.hostObjects.State.Shift;
+    await drawFromMemoryMap("canvas", val);
+  });
+  
+  console.log("Observe key / mouse event") // https://cpplover.blogspot.com/2009/06/dom-level-3.html
+  const mousemove$ = fromEvent(document.getElementById("canvas"), 'mousemove');
+  mousemove$.pipe(debounceTime(100)).subscribe(async (event) => {
+    // parseInt()はバグの温床
+    const rect = event.target.getBoundingClientRect() ;
+    const x = Math.trunc(event.clientX - rect.left);
+    const y = Math.trunc(event.clientY - rect.top);
+    dispatch(`{"type" : "mousemove", "payload": ["${x}", "${y}"] }`);
+  });
+
+  const mousewheel$ = fromEvent(document.getElementById("canvas"), 'mousewheel');
+  mousewheel$.pipe(filter(e => e.shiftKey)).subscribe(async (event) => {
+    event.preventDefault();
+    if (event.wheelDelta > 0) {
+      dispatch(`{ "type" : "shiftup", "payload" : ["1"] }`)
+    } else {
+      dispatch(`{ "type" : "shiftdown", "payload" : ["-1"] }`)
+    }
+    
+  });
+  mousewheel$.pipe(filter(e => e.ctrlKey)).subscribe(async (event) => {
+    // event.preventDefault();
+    if (event.wheelDelta > 0) {
+      dispatch(`{ "type" : "zoomup", "payload": [] }`)
+    } else {
+      dispatch(`{ "type" : "zoomdown", "payload": [] }`)
+    }
+    // stage.style.transform = `scale(${canvas_scale})`;
+  });
+
+  const keyevent$ = fromEvent(window, 'keydown');
+  keyevent$.pipe(filter(e => e.repeat =! true)).subscribe(async (event) => {
+    console.log(`${event.shiftKey ? "shift + " : ""}${event.ctrlKey ? "ctrl + " : ""}${event.altKey ? "alt + " : ""}${event.key}`);
+  });
+
+  // let a = await setUserName("setUserName");
+  // console.log(a);
+  // これすると、loadingのあとになる
+
+</script>
+
+</html>

@@ -1,0 +1,16 @@
+[package]
+name = 'htipcR'
+version = '0.1.0'
+edition = '2021'
+
+[lib]
+crate-type = [ 'staticlib' ]
+name = 'htipcR'
+
+[dependencies]
+extendr-api = '*'
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+
+htipc = { path = "../../../rust/core", features = ["r-lang"] }
+# htipc = { git = "https://github.com/haitusense/htipc/", features = ["r-lang"] }

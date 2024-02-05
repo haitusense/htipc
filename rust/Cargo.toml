@@ -1,0 +1,15 @@
+[workspace]
+
+members = [
+  "core",
+  "clu",
+  "argsproc"
+]
+
+[workspace.dependencies]
+htipc = { path = "./core" }
+argsproc = { path = "./argsproc" }
+
+anyhow = "*"
+thiserror = "*"
+colored = "*"
