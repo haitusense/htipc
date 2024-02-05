@@ -9,7 +9,7 @@
         Title="MainWindow" Height="450" Width="800">
     <DockPanel LastChildFill="True">
         <StatusBar VerticalAlignment="Bottom" DockPanel.Dock="Bottom">
-            <TextBlock x:Name="statusLabel"/>
+            <local:TextBlockJs x:Name="statusLabel"/>
         </StatusBar>
         <wv2:WebView2 Name = "webView" Loaded="Window_Loaded" />
     </DockPanel>

@@ -39,40 +39,32 @@ namespace SimpleGUI;
 
 public class MainModel {
   
-  Dictionary<string, Action<string[]>> actions = new Dictionary<string, Action<string[]>>();
-
-  public int shift = 0;
+  Dictionary<string, Action<string[]>> dispatcher = new Dictionary<string, Action<string[]>>();
 
   private MainModel() { }
 
-  protected internal static async Task<MainModel> Build(MainWindow window) {
-
+  protected internal static async Task<MainModel> Build(Microsoft.Web.WebView2.Wpf.WebView2 wv2) {
     var obj = new MainModel();
   
     MemoryMapSingleton.GetInstance().Create<int>("SimpleGuiMmf",320, 240);
 
-    window.webView.CoreWebView2.OpenDevToolsWindow();
-    "SimpleGUI.resource.app.js".res_to_contents().register_js(window.webView);
+    wv2.CoreWebView2.OpenDevToolsWindow();
+    "SimpleGUI.resource.app.js".res_to_contents().register_js(wv2);
+    "SimpleGUI.resource.rxjs.umd.min.js".res_to_contents().register_js(wv2);
     // "SimpleGUI.resource.index.html".res_to_resContents().ShowMessageBoxLite();
-    "SimpleGUI.resource.index.html".res_to_contents().navigate_form_content(window.webView);
+    "SimpleGUI.resource.index.html".res_to_contents().navigate_form_content(wv2);
     // @"https://www.microsoft.com".navigate_form_url(webView);
     // webView2.CoreWebView2.AddHostObjectToScript("jscall", new JsCall());
 
     
-    obj.actions["message"] =(n)=>{     
-      window.statusLabel.Text = n[0];
-      // webView.CoreWebView2.PostWebMessageAsJson(json);
-    };
-    obj.actions["eval"] =(n)=>{ window.webView.ExecuteScriptAsync(n[1]); };
-    obj.actions["mousemove"] =(n)=>{ 
+    obj.dispatcher["message"] =(n)=>{ State.GetInstance().Label = n[0]; };
+    obj.dispatcher["eval"] =(n)=>{ wv2.ExecuteScriptAsync(n[0]); };
+    obj.dispatcher["mousemove"] =(n)=>{ 
       var k = MemoryMapSingleton.GetInstance().ReadPixel<int>(int.Parse(n[0]), int.Parse(n[1]));
-      window.statusLabel.Text = $"{n[0]}-{n[1]} : {k}";
+      State.GetInstance().Label = $"{n[0]}-{n[1]} : {k}";
     };
-    obj.actions["draw"] =(_)=>{
-      var shift = window.model.shift;
-      window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{shift}}) """);
-    };
-    obj.actions["fill"] =(_)=>{
+    obj.dispatcher["draw"] =(_)=>{ wv2.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{State.GetInstance().Shift}}) """); };
+    obj.dispatcher["fill"] =(_)=>{
       var mmf = MemoryMapSingleton.GetInstance();
       var w = mmf.Width();
       var h = mmf.Height();
@@ -81,23 +73,12 @@ public class MainModel {
           mmf.WritePixel<int>(x + y * w, x % 2); 
         } 
       }
-      // MemoryMapSingleton.GetInstance().WritePixels(buf);
-      window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas" {{window.model.shift}}) """);
     };
-    obj.actions["shiftup"] =(_)=>{
-      window.model.shift++;
-      window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{window.model.shift}}) """);
-    };
-    obj.actions["shiftdown"] =(_)=>{ 
-      window.model.shift--;
-      window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{window.model.shift}}) """);
-    };
-    obj.actions["shift"] =(n)=>{ 
-      window.model.shift = int.Parse(n[0]);
-      window.webView.ExecuteScriptAsync($$""" drawFromMemoryMap("canvas", {{window.model.shift}}) """);
-    };
-    obj.actions["rendering"] =(n)=>{
-      window.webView.ExecuteScriptAsync($$""" document.getElementById("canvas").style.imageRendering = "{{n[0]}}"; """);
+    obj.dispatcher["shiftup"] =(n)=>{ State.GetInstance().Shift = State.GetInstance().Shift + int.Parse(n[0]); };
+    obj.dispatcher["shiftdown"] =(n)=>{ State.GetInstance().Shift = State.GetInstance().Shift + int.Parse(n[0]); };
+    obj.dispatcher["shift"] =(n)=>{ State.GetInstance().Shift = int.Parse(n[0]); };
+    obj.dispatcher["rendering"] =(n)=>{
+      wv2.ExecuteScriptAsync($$""" document.getElementById("canvas").style.imageRendering = "{{n[0]}}"; """);
     };
     
     return obj;
@@ -109,12 +90,12 @@ public class MainModel {
       public string[] payload {get; set; }
   }
   
-  public void Actions(string json){
+  public void dispatch(string json){
     try{
       Console.WriteLine(json);
       var obj = System.Text.Json.JsonSerializer.Deserialize<Act>(json);
       Action<string[]> act;
-      if (actions.TryGetValue(obj.type, out act)) { act(obj.payload); }
+      if (dispatcher.TryGetValue(obj.type, out act)) { act(obj.payload); }
 
     }catch(Exception e){
       Console.WriteLine(e.ToString());

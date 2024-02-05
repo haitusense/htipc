@@ -1,4 +1,4 @@
-drawFromMemoryMap = async function(id, bitshift) {
+const drawFromMemoryMap = async function(id, bitshift) {
   const w = await chrome.webview.hostObjects.SimpleGuiMmf.Width();
   const h = await chrome.webview.hostObjects.SimpleGuiMmf.Height();
 
@@ -15,4 +15,12 @@ drawFromMemoryMap = async function(id, bitshift) {
   // canvas.height = 240;
 }
 
-action = function(json) { window.chrome.webview.postMessage(json) }
+const dispatch = (json) => { 
+  // chrome.webview.hostObjects.hoge.dispatcher(e);
+  window.chrome.webview.postMessage(json); 
+}
+
+/* actionCreator */
+
+setUserName = async (e) => await chrome.webview.hostObjects.actionCreator.setUserName(e);
+setUser2 = async (e) => JSON.stringify({ type : "test", payload: e });

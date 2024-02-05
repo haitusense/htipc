@@ -9,8 +9,19 @@ using System.Numerics;
 using System.CodeDom;
 using System.Windows;
 using System.Windows.Documents;
+using System.Text.Json;
 
 namespace SimpleGUI;
+
+public struct A {
+    public string type {get; set; }
+    public string[] payload {get; set; }
+}
+
+public static class ActionEx{
+    public static string to_json(this string src) => JsonSerializer.Serialize(new A { type = "message", payload = new string[]{ src } });
+}
+
 
 public class NamedPipeSingleton {
   private NamedPipeSingleton() { }
