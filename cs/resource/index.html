@@ -14,6 +14,7 @@
 </body>
 <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js"></script> -->
 <script>
+  if(!window.chrome.webview) alert('webview not found');
   /*asyncだと間に合わない*/
   window.addEventListener('DOMContentLoaded', () => console.log("DOMContentLoaded") );
   window.addEventListener('load', () => console.log("loading") );
@@ -22,54 +23,32 @@
 
 <script type="module">
   console.log("module loading")
-  const { fromEvent, range, filter, debounceTime, Observable } = window.rxjs;
-
-  if(!window.chrome.webview) alert('webview not found');
-
-  /*
-    rxjs
-    const helloButton = document.querySelector('button');
-    const helloClick$ = new Observable((subscriber) => helloButton.addEventListener('click', (event) => { subscriber.next(event); }) );
-
-    // 書き換え
-    fromEvent(document.querySelector('button'), 'click').subscribe(e => { console.log("aa"); })
-    
-    helloClick$.subscribe((event) => console.log('Sub 1', event.type, event.x, event.y) );
-    helloClick$.subscribe((event) => console.log('Sub 2', event.type, event.x, event.y) );
-
-    const source = window.rxjs.interval(1000);
-    const example = window.rxjs.interval(2000);
-    const subscribe = example.subscribe((val) => console.log(val));
-
-    range(1, 200).pipe(filter((x) => x % 2 === 1), window.rxjs.map((x) => x + x)).subscribe((x) => console.log(x));
-  
-    hostobj
-    let state = {
-      "Name" : 0
-    }
-    let a = await chrome.webview.hostObjects.State.Name;
-    let b = await chrome.webview.hostObjects.State["Name"]; // リフレクションでのアクセス
-    state["Name"] = await chrome.webview.hostObjects.State["Name"];
-
-    .bufferTime(500).filter().subscribe() // ダブルクリック, 順列押しの判定
-    .debounceTime(100).subscribe() // 移動を止めたときにイベントを流す
-  */
+  const { fromEvent, range, filter, map, debounceTime, Observable } = window.rxjs;
 
   // addEventListener webview message / DOM Control
   console.log("Observe webview message")
   const wvMessage$ = fromEvent(window.chrome.webview, 'message');
-  wvMessage$.pipe(filter(e => e.data === "Label")).subscribe(async (e) => {
+
+  const propertyChanged$ = wvMessage$.pipe(filter(e => e.data.type === "propertyChanged"), map(e => e.data.data));
+  propertyChanged$.pipe(filter(e => e.PropertyName === "Label")).subscribe(async (e) => {
     chrome.webview.hostObjects.statusLabel.Text = await chrome.webview.hostObjects.State.Label;
   });
-  wvMessage$.pipe(filter(e => e.data === "Shift")).subscribe(async (e) => {
+  propertyChanged$.pipe(filter(e => e.PropertyName === "Shift")).subscribe(async (e) => {
     let val = await chrome.webview.hostObjects.State.Shift;
     await drawFromMemoryMap("canvas", val);
   });
-  
-  console.log("Observe key / mouse event") // https://cpplover.blogspot.com/2009/06/dom-level-3.html
+
+  const pipeMessageReceived$ = wvMessage$.pipe(filter(e => e.data.type === "pipeMessageReceived"), map(e => e.data.data));
+  pipeMessageReceived$.subscribe(async (e) => {
+    console.log(e)
+    dispatch(JSON.stringify(e));
+  });
+
+  console.log("Observe key / mouse event") 
   const mousemove$ = fromEvent(document.getElementById("canvas"), 'mousemove');
   mousemove$.pipe(debounceTime(100)).subscribe(async (event) => {
     // parseInt()はバグの温床
+    // https://cpplover.blogspot.com/2009/06/dom-level-3.html
     const rect = event.target.getBoundingClientRect() ;
     const x = Math.trunc(event.clientX - rect.left);
     const y = Math.trunc(event.clientY - rect.top);

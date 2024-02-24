@@ -1,6 +1,6 @@
-# rhtipc
+# htipc
 
-sending a command using a namedpipe.
+sending a command using namedpipe.
 
 ## Usage
 
@@ -59,4 +59,10 @@ graph LR
   R<-->|rpixel mmf|Table1
   Python-->|win32pipe.CreateNamedPipe|GUI
   Python<-->|mmap|Table1
+```
+
+```
+A B C              -> "A B C"
+A B C -json true   -> "["A", "B", "C"]"
+A B C -action true -> "{ "type" : "A", "payload" : ["B", "C"] }"
 ```

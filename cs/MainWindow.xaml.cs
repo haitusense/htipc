@@ -55,10 +55,25 @@ public partial class MainWindow : Window {
         model = await MainModel.Build(wv);
         NamedPipeSingleton.GetInstance().Run("SimpleGui");
         
+        /*** v to m ***/
         /* postMessage({'a': 'b'}), postMessage(1.2) -> ArgumentException, postMessage('example') -> "example" */
         wv.CoreWebView2.WebMessageReceived += (/*object*/ s, /*CoreWebView2WebMessageReceivedEventArgs*/ e) => { model.dispatch( e.TryGetWebMessageAsString() ); };
         wv.NavigationCompleted += (/*object*/ s, /*CoreWebView2NavigationCompletedEventArgs*/ e) => { model.dispatch( e.ToString().to_json() ); };
-        NamedPipeSingleton.GetInstance().PipeMessageReceived += (s, e) => { this.Dispatcher.Invoke(() => { model.dispatch(e); }); };
+        
+        /*** m/v to v ***/
+        // window.webView.ExecuteScriptAsync($$"""  """);
+        // window?.webView.CoreWebView2.PostWebMessageAsString(propertyName);
+        State.GetInstance().PropertyChanged += (s, e) => {
+            wv.CoreWebView2.PostWebMessageAsJson(new EventMessager("propertyChanged", e as PropertyChangedEventArgs).to_json());
+        };
+        NamedPipeSingleton.GetInstance().PipeMessageReceived += (s, e) => { this.Dispatcher.Invoke(() => {
+            var dst = System.Text.Json.JsonSerializer.Deserialize<object>(e);
+            wv.CoreWebView2.PostWebMessageAsJson(new EventMessager("pipeMessageReceived", dst).to_json()); });
+        };
+        wv.CoreWebView2.NewWindowRequested += (s, e) => {
+            wv.CoreWebView2.PostWebMessageAsJson(new EventMessager("newWindowRequested", e).to_json());
+            e.Handled = true;
+        };
 
         wv.CoreWebView2.AddHostObjectToScript("SimpleGuiMmf", MemoryMapSingleton.GetInstance());
         wv.CoreWebView2.AddHostObjectToScript("actionCreator", ActionCreator.GetInstance());
@@ -66,11 +81,16 @@ public partial class MainWindow : Window {
         wv.CoreWebView2.AddHostObjectToScript("State", State.GetInstance());
         wv.CoreWebView2.AddHostObjectToScript("statusLabel", this.statusLabel);
         
-        // window.webView.ExecuteScriptAsync($$"""  """);
-        // window?.webView.CoreWebView2.PostWebMessageAsString(propertyName);
-        State.GetInstance().PropertyChanged += (s, e) => wv.CoreWebView2.PostWebMessageAsString((e as PropertyChangedEventArgs).PropertyName);
 
     }
+
+    struct EventMessager {
+        public string type { get; set; }
+        public object data { get; set; }
+
+        public EventMessager(string type, object data){ this.type = type; this.data = data; }
+        public string to_json() => System.Text.Json.JsonSerializer.Serialize(this);
+    };
 }
 
 [ClassInterface(ClassInterfaceType.AutoDual)]

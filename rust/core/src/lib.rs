@@ -92,7 +92,7 @@ mod tests {
     use crossterm::event::{read, Event, KeyEvent, KeyCode, EnableMouseCapture, DisableMouseCapture};
     use crossterm::{execute, terminal::{EnterAlternateScreen, LeaveAlternateScreen}};
 
-    execute!(stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(std::io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
     loop {
       // `read()` blocks until an `Event` is available
       match read()? {
@@ -107,7 +107,7 @@ mod tests {
           _ => {}
       }
   }
-  execute!(stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+  execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
     
     Ok(())
   }
